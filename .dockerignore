@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Secrets
+.env
+*.env
+
+# ChromaDB local data 
+chroma_db/
+./data/
+
+# Git
+.git/
+.gitignore
+
+# Jenkins
+Jenkinsfile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

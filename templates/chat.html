@@ -1,0 +1,427 @@
+<!-- templates/chat.html -->
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripSwarm – Plan Your Trip</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="/static/css/style.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/chat.css" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="{{ url_for('static', path='images/favicon/favicon-192x192.png') }}">
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell" id="app-shell">
+
+  <!-- Sidebar -->
+
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Header -->
+    <div class="sidebar-header">
+      <a href="/" class="brand-mark" id="brand-link" title="Back to homepage">
+        <img
+          src="/static/images/Trip_Swarm_Logo.png"
+          alt="Trip Swarm"
+          class="brand-logo"
+          onerror="this.style.display='none';"
+        />
+        <span class="brand-text">
+          <span class="brand-trip">Trip</span><span class="brand-swarm"> Swarm</span>
+        </span>
+        <span class="logo-expand-hint"><i class="bi bi-chevron-right"></i></span>
+      </a>
+      <button class="btn-sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" onclick="toggleSidebar()">
+        <i class="bi bi-layout-sidebar-reverse" style="font-size:1rem;"></i>
+      </button>
+    </div>
+
+    <!-- Action buttons -->
+
+    <div class="sidebar-actions">
+      <div class="mini-tip-wrap">
+        <button class="btn-new btn-new-trip" onclick="newThread('travel')">
+          <i class="bi bi-airplane-fill"></i>
+          <span class="label-hide">Trip</span>
+        </button>
+        <span class="mini-tip">New Trip Plan</span>
+      </div>
+      <div class="mini-tip-wrap">
+        <button class="btn-new btn-new-ask" onclick="newThread('rag')">
+          <i class="bi bi-chat-square-dots-fill"></i>
+          <span class="label-hide">Ask</span>
+        </button>
+        <span class="mini-tip">Travel Copilot</span>
+      </div>
+    </div>
+
+    <!-- Thread list (Full Mode and Mini mode)  -->
+
+    <div class="thread-list" id="thread-list">
+
+      <!-- Full-mode label -->
+
+      <div class="thread-section-label">Recents</div>
+
+      <!-- Mini-mode -->
+
+      <div class="mini-tip-wrap" style="margin-bottom:4px;">
+        <div class="mini-recents-trigger" id="mini-recents-trigger" title="Recents">
+          <i class="bi bi-clock-history"></i>
+        </div>
+        <span class="mini-tip">Recents</span>
+      </div>
+
+      <!-- Thread items rendered here by app.js -->
+
+      <div class="thread-empty" id="thread-empty">
+        <i class="bi bi-chat-dots-fill"></i>
+        <span>No chats yet</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+
+    <div class="sidebar-footer">
+      <div class="mini-tip-wrap">
+        <a href="/" class="home-row">
+          <i class="bi bi-house-fill"></i>
+          <span class="footer-label">Back to Homepage</span>
+        </a>
+        <span class="mini-tip">Homepage</span>
+      </div>
+
+      <div class="user-row">
+        <div class="mini-tip-wrap" style="display:contents;">
+          <div onclick="openProfileModal()" style="cursor:pointer;display:contents;">
+            {% if user.picture %}
+              <img src="{{ user.picture }}" class="user-avatar-img" alt="Profile" title="My Profile">
+            {% else %}
+              <div class="user-avatar" title="My Profile">{{ user.name[0].upper() }}</div>
+            {% endif %}
+            <div class="user-info">
+              <div class="user-name">{{ user.name }}</div>
+              <div class="user-email">{{ user.email }}</div>
+            </div>
+          </div>
+          <a href="/auth/logout" class="btn-ghost btn-logout" title="Sign out">
+            <i class="bi bi-box-arrow-right" style="font-size:0.95rem;"></i>
+          </a>
+          <span class="mini-tip" style="white-space:nowrap;">{{ user.name }}&nbsp;·&nbsp;Profile</span>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+
+  <!-- Main Panel -->
+
+  <main class="main-panel">
+
+    <!-- Mobile topbar -->
+    <div class="mobile-topbar" id="mobile-topbar">
+      <button class="btn-ghost" onclick="toggleSidebar()" style="margin-right:8px;">
+        <i class="bi bi-list" style="font-size:1.2rem;color:#94a3b8;"></i>
+      </button>
+      <a href="/" style="display:flex;align-items:center;gap:6px;text-decoration:none;">
+        <img src="/static/images/Trip_Swarm_Logo.png" alt="Trip Swarm" style="height:26px;object-fit:contain;" onerror="this.style.display='none'" />
+        <span class="brand-text"><span class="brand-trip">Trip</span><span class="brand-swarm"> Swarm</span></span>
+      </a>
+
+    </div>
+
+    <!-- Top nav -->
+
+    <nav class="top-nav">
+      <ul class="nav-tabs-list" id="mainTabs">
+        <li><button class="nav-tab active" data-tab="travel" onclick="switchTab('travel',this)"><i class="bi bi-airplane"></i>Trip Planner</button></li>
+        <li><button class="nav-tab" data-tab="rag" onclick="switchTab('rag',this)"><i class="bi bi-chat-square-dots"></i>Travel Copilot</button></li>
+        <li><button class="nav-tab" data-tab="reports" onclick="switchTab('reports',this)"><i class="bi bi-luggage"></i>Trips</button></li>
+        <li><button class="nav-tab" data-tab="docs" onclick="switchTab('docs',this)"><i class="bi bi-file-earmark-arrow-up"></i>My Docs</button></li>
+      </ul>
+    </nav>
+
+    <!-- Trip Planner -->
+
+    <section class="tab-pane active" id="tab-travel">
+      <div class="chat-container" id="travel-messages">
+        <div class="welcome-state" id="travel-welcome">
+          <span class="welcome-icon">✈️</span>
+          <h4>Plan your next adventure</h4>
+          <p>Describe your trip — destination, dates, budget, preferences. Our agents handle the rest.</p>
+          <div class="chips-grid">
+            <button class="suggestion-chip" onclick="setQuery('Plan a 5-day trip to Tokyo from Chennai')">5 days in Tokyo</button>
+            <button class="suggestion-chip" onclick="setQuery('Weekend trip from Chennai to Bangkok, budget-friendly')">Weekend in Bangkok</button>
+            <button class="suggestion-chip" onclick="setQuery('Honeymoon trip to Paris for 7 days, mid-range budget')">Paris honeymoon</button>
+            <button class="suggestion-chip" onclick="setQuery('Solo backpacking trip across Southeast Asia for 2 weeks')">SE Asia backpacking</button>
+          </div>
+        </div>
+      </div>
+      <div class="input-bar">
+        <div class="input-group-wrap">
+          <textarea id="travel-input" placeholder="Describe your trip — destination, dates, budget..." onkeydown="handleKey(event,'travel')" oninput="autoGrow(this)" rows="1"></textarea>
+          <button class="btn-send" id="travel-send-btn" onclick="sendTravel()"><i class="bi bi-send-fill"></i></button>
+        </div>
+        <div class="input-meta"><span id="travel-thread-label"></span></div>
+      </div>
+    </section>
+
+    <!-- Travel Copilot -->
+
+    <section class="tab-pane" id="tab-rag">
+      <div class="chat-container" id="rag-messages">
+        <div class="welcome-state" id="rag-welcome">
+          <span class="welcome-icon">🧠</span>
+          <h4>Ask anything about travel</h4>
+          <p>Visa application process, packing tips, destination guides, or questions about your uploaded documents.</p>
+          <div class="chips-grid">
+            <button class="suggestion-chip chip-rag" onclick="setRagQuery('What documents do I need for a Schengen visa?')">Schengen visa docs</button>
+            <button class="suggestion-chip chip-rag" onclick="setRagQuery('Best time to visit Japan for cherry blossoms?')">Best time for Japan</button>
+            <button class="suggestion-chip chip-rag" onclick="setRagQuery('What travel insurance coverage do I need for Europe?')">Travel insurance</button>
+            <button class="suggestion-chip chip-rag" onclick="setRagQuery('What are essential packing tips for a 2-week trip?')">Packing tips</button>
+          </div>
+        </div>
+      </div>
+      <div class="input-bar">
+        <div id="rag-attach-chips" class="rag-attach-chips" style="display:none;"></div>
+        <div class="input-group-wrap">
+          <label class="btn-attach" for="rag-file-input" title="Attach files (max 3 · PDF, DOCX, TXT, MD)">
+            <i class="bi bi-plus-lg"></i>
+            <input type="file" id="rag-file-input" accept=".pdf,.docx,.txt,.md"
+                   class="d-none" multiple onchange="onRagFileSelect(this)" />
+          </label>
+          <textarea id="rag-input" placeholder="Ask about visas, destinations, tips, or your documents..." onkeydown="handleKey(event,'rag')" oninput="autoGrow(this)" rows="1"></textarea>
+          <button class="btn-send btn-send-rag" id="rag-send-btn" onclick="sendRag()"><i class="bi bi-send-fill"></i></button>
+        </div>
+        <div class="input-meta"><span id="rag-source-badge"></span><span id="rag-thread-label"></span></div>
+      </div>
+    </section>
+
+<!-- Trips -->
+
+    <section class="tab-pane" id="tab-reports">
+      <div class="content-pane">
+        <div class="content-pane-header">
+          <div>
+            <div class="content-pane-title"><i class="bi bi-luggage"></i>Your Journeys</div>
+            <div class="content-pane-subtitle">Your travel plans, all in one place.</div>
+          </div>
+        </div>
+
+        <!-- Inner trip tabs -->
+        <div class="trip-tabs-bar">
+          <button class="trip-tab-btn active" data-trip-tab="upcoming" onclick="switchTripTab('upcoming', this)">
+            <i class="bi bi-calendar-event"></i> Upcoming
+          </button>
+          <button class="trip-tab-btn" data-trip-tab="live" onclick="switchTripTab('live', this)">
+            <span class="live-dot-indicator"></span> Live
+          </button>
+          <button class="trip-tab-btn" data-trip-tab="past" onclick="switchTripTab('past', this)">
+            <i class="bi bi-clock-history"></i> Past Trips
+          </button>
+        </div>
+
+        <div id="trip-tab-upcoming" class="trip-tab-pane active">
+          <div id="reports-upcoming"><div class="empty-state"><i class="bi bi-hourglass-split"></i><p>Loading…</p></div></div>
+        </div>
+        <div id="trip-tab-live" class="trip-tab-pane">
+          <div id="reports-live"><div class="empty-state"><i class="bi bi-hourglass-split"></i><p>Loading…</p></div></div>
+        </div>
+        <div id="trip-tab-past" class="trip-tab-pane">
+          <div id="reports-past"><div class="empty-state"><i class="bi bi-hourglass-split"></i><p>Loading…</p></div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- My Docs -->
+
+    <section class="tab-pane" id="tab-docs">
+      <div class="content-pane">
+        <div class="content-pane-header">
+          <div>
+            <div class="content-pane-title"><i class="bi bi-file-earmark-arrow-up"></i>My Documents</div>
+            <div class="content-pane-subtitle">Upload PDFs, Word docs, or text files. They're searchable in Travel Copilot — isolated to your account only.</div>
+          </div>
+          <label class="btn-upload" for="doc-upload-input">
+            <i class="bi bi-upload"></i>Upload
+            <input type="file" id="doc-upload-input" accept=".pdf,.docx,.txt,.md" class="d-none" onchange="uploadDocument(this)" multiple />
+          </label>
+        </div>
+        <div id="upload-progress" class="mb-3" style="display:none;">
+          <div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width:100%"></div></div>
+          <small class="upload-progress-label" id="upload-progress-label"></small>
+        </div>
+        <div id="docs-list"><div class="empty-state"><i class="bi bi-hourglass-split"></i><p>Loading documents...</p></div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Recents Flyout -->
+
+<div class="recents-flyout" id="recents-flyout">
+  <div class="flyout-header">
+    <span class="flyout-title"><i class="bi bi-clock-history" style="margin-right:6px;"></i>Recents</span>
+    <button class="flyout-close" id="flyout-close-btn" title="Close"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="flyout-list" id="flyout-list">
+    <div class="flyout-empty">
+      <i class="bi bi-chat-dots"></i>
+      <span>No recent chats</span>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile overlay -->
+ 
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+<!-- Delete Thread Confirmation Modal -->
+<div class="modal fade" id="deleteThreadModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" style="color:#f87171;"><i class="bi bi-trash3 me-2"></i>Delete Chat</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="font-size:0.85rem;color:#94a3b8;">
+        This chat and all its messages will be permanently deleted. This cannot be undone.
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sm btn-danger" onclick="executeDeleteThread()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Rename modal -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Rename chat</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="rename-input" class="form-control form-control-sm" maxlength="80" placeholder="Chat name…" onkeydown="if(event.key==='Enter') confirmRename()" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-sm btn-primary" onclick="confirmRename()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Delete Document Modal ───────────────────────────── -->
+<div class="modal fade" id="deleteDocModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="background:#1e293b;border:1px solid rgba(255,255,255,0.08);border-radius:14px;">
+      <div class="modal-body" style="padding:28px 24px 20px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:10px;">🗑️</div>
+        <div style="font-weight:600;font-size:1rem;color:#f1f5f9;margin-bottom:8px;">Remove Document?</div>
+        <div style="font-size:0.82rem;color:#94a3b8;line-height:1.5;">
+          This will permanently delete the file and remove it from your AI Knowlege and cloud storage.
+          This action cannot be undone.
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.06);padding:14px 24px;gap:10px;justify-content:center;">
+        <button type="button" class="btn btn-sm"
+                style="background:rgba(255,255,255,0.06);color:#cbd5e1;border:none;border-radius:8px;padding:7px 20px;"
+                data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-sm"
+                style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:7px 20px;font-weight:600;"
+                onclick="executeDeleteDocument()">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Duplicate document modal -->
+<div class="modal fade" id="duplicateDocModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Document already uploaded</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>You have already uploaded this document:</p>
+        <ul id="duplicate-doc-names"></ul>
+        <p class="mb-0">Delete the existing copy from <b>My Docs</b> first if you want to upload it again.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Artifact Panel -->
+<div class="artifact-overlay" id="artifact-overlay" onclick="closeArtifactPanel()"></div>
+<div class="artifact-panel" id="artifact-panel">
+  <!-- content injected by JS -->
+</div>
+
+
+<!-- ══════ COUNTRY SETUP MODAL (first login) ══════ -->
+<div class="modal fade" id="countrySetupModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="border:1px solid rgba(56,189,248,0.3);">
+      <div class="modal-body" style="padding:28px 24px;text-align:center;">
+        <div style="font-size:2.2rem;margin-bottom:12px;">🌍</div>
+        <h5 style="color:#e2e8f0;font-weight:700;margin-bottom:6px;">Welcome to TripSwarm!</h5>
+        <p style="color:#64748b;font-size:0.83rem;margin-bottom:20px;">
+          Tell us your home country so we can auto-fill your departure city when planning trips.
+        </p>
+        <select id="country-setup-select" class="ts-select" style="margin-bottom:16px;">
+          <option value="">Select your country…</option>
+        </select>
+        <button class="ts-btn ts-btn-primary" style="width:100%;" onclick="saveCountrySetup()">
+          Continue →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ PROFILE MODAL ══════ -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content" style="border:1px solid rgba(56,189,248,0.2);border-radius:20px;overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a2540,#0f1e36);border-bottom:1px solid rgba(255,255,255,0.07);padding:20px 22px;">
+        <h5 class="modal-title" style="color:#e2e8f0;font-weight:700;font-size:1rem;">My Profile</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="background:#111827;padding:28px 24px;" id="profile-modal-body">
+        <div style="text-align:center;padding:40px;color:#64748b;">
+          <div class="ts-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/chat.js"></script>
+<!-- <script src="/static/js/tripflow.js"></script> -->
+
+</body>
+</html>

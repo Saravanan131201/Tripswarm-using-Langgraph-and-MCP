@@ -1,0 +1,2213 @@
+<!-- templates/index.html -->
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripSwarm – AI-Powered Multi-Agent Travel Planner</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" />
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/home.css" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', path='images/favicon/favicon-192x192.png') }}">
+
+</head>
+
+<body>
+
+  <canvas id="swarm-canvas"></canvas>
+
+  <!-- Terms Modal (Google Sign-in only) -->
+  <div id="terms-modal" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+    <div class="terms-modal-inner">
+      <h2 id="terms-title">Before you continue</h2>
+      <p class="terms-sub">TripSwarm will access the following from your Google account to create and manage your
+        profile:</p>
+
+      <div class="terms-perm-item">
+        <span class="icon">👤</span>
+        <div>
+          <p class="perm-title">Full name</p>
+          <p class="perm-sub">Used to personalise your experience</p>
+        </div>
+      </div>
+      <div class="terms-perm-item">
+        <span class="icon">✉️</span>
+        <div>
+          <p class="perm-title">Email address</p>
+          <p class="perm-sub">Used as your account identifier</p>
+        </div>
+      </div>
+      <div class="terms-perm-item">
+        <span class="icon">🖼️</span>
+        <div>
+          <p class="perm-title">Profile picture</p>
+          <p class="perm-sub">Displayed on your account avatar</p>
+        </div>
+      </div>
+
+      <p class="terms-note">
+        We never sell your data or share it with third parties.<br>
+        By continuing you agree to our <a href="/terms">Terms of Service</a>.
+      </p>
+
+      <div class="terms-btn-row">
+        <button class="terms-cancel" onclick="closeTermsModal()">Cancel</button>
+        <a id="terms-agree-btn" href="/auth/login" class="terms-agree">Agree &amp; Continue</a>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Auth Choice Modal -->
+  <div id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" style="display:none;position:fixed;inset:0;z-index:9999;
+            background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);
+            -webkit-backdrop-filter:blur(6px);align-items:center;
+            justify-content:center;padding:16px;">
+    <div class="auth-modal-inner" id="auth-modal-inner">
+
+      <!-- Step 0: Choose method -->
+      <div id="auth-step-choose">
+        <div style="text-align:center;margin-bottom:22px;">
+          <div style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;
+                    color:#f8f9ff;margin-bottom:6px;" id="auth-modal-title">Sign in to TripSwarm</div>
+          <p style="color:#8BA0BC;font-size:0.82rem;line-height:1.55;">
+            Plan smarter trips with our AI swarm.<br>Choose how you'd like to continue.
+          </p>
+        </div>
+
+        <!-- Google button → opens Terms Modal first -->
+        <button onclick="switchToTermsModal()" style="display:flex;align-items:center;justify-content:center;gap:12px;
+                width:100%;padding:13px 20px;border-radius:12px;
+                background:#ffffff;color:#3c4043;font-size:0.9rem;font-weight:700;
+                border:none;cursor:pointer;margin-bottom:14px;
+                box-shadow:0 2px 12px rgba(0,0,0,0.25);
+                transition:transform 0.15s,box-shadow 0.15s;"
+          onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)'"
+          onmouseout="this.style.transform='';this.style.boxShadow='0 2px 12px rgba(0,0,0,0.25)'">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="22" height="22"
+            alt="Google" />
+          Continue with Google
+        </button>
+
+        <!-- Divider -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="flex:1;height:1px;background:rgba(139,160,188,0.2);"></div>
+          <span style="color:#8BA0BC;font-size:0.75rem;">or</span>
+          <div style="flex:1;height:1px;background:rgba(139,160,188,0.2);"></div>
+        </div>
+
+        <!-- OTP button -->
+        <button onclick="authShowStep('email')" style="display:flex;align-items:center;justify-content:center;gap:12px;
+                     width:100%;padding:13px 20px;border-radius:12px;border:none;cursor:pointer;
+                     background:#122040;color:#f8f9ff;font-size:0.9rem;font-weight:700;
+                     border:1px solid rgba(0,212,200,0.3);
+                     transition:background 0.2s,border-color 0.2s;">
+          <!-- Gmail icon SVG inline -->
+          <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"
+              fill="#EA4335" />
+          </svg>
+          Sign in with OTP
+        </button>
+
+        <p style="color:#64748b;font-size:0.72rem;text-align:center;margin-top:18px;line-height:1.5;">
+          We never sell your data.
+          <a href="/terms" style="color:#00D4C8;text-decoration:none;">Terms of Service</a>
+        </p>
+        <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;
+                     color:#8BA0BC;font-size:1.2rem;cursor:pointer;line-height:1;">✕</button>
+      </div>
+
+      <!-- Step 1: Email input -->
+      <div id="auth-step-email" style="display:none;">
+        <button onclick="authShowStep('choose')" style="background:none;border:none;color:#8BA0BC;cursor:pointer;
+                     font-size:0.82rem;margin-bottom:16px;padding:0;display:flex;align-items:center;gap:5px;">
+          ← Back
+        </button>
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:2rem;margin-bottom:8px;">✉️</div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;
+                    color:#f8f9ff;margin-bottom:4px;">Enter your Gmail</div>
+          <p style="color:#8BA0BC;font-size:0.8rem;">We'll send a 6-digit code to verify it's you.</p>
+        </div>
+
+        <div id="auth-name-wrap" style="display:none;margin-bottom:12px;">
+          <label style="color:#8BA0BC;font-size:0.78rem;display:block;margin-bottom:5px;">
+            Your name <span style="color:#00D4C8;">*</span>
+          </label>
+          <input id="otp-name" type="text" placeholder="e.g. C. Joseph Vijay" style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(0,212,200,0.25);
+                      background:#122040;color:#f8f9ff;font-size:0.88rem;outline:none;
+                      font-family:'Inter',sans-serif;" onfocus="this.style.borderColor='#00D4C8'"
+            onblur="this.style.borderColor='rgba(0,212,200,0.25)'" />
+        </div>
+
+        <label style="color:#8BA0BC;font-size:0.78rem;display:block;margin-bottom:5px;">
+          Gmail address <span style="color:#00D4C8;">*</span>
+        </label>
+        <div style="position:relative;margin-bottom:16px;">
+          <div style="position:absolute;left:12px;top:50%;transform:translateY(-50%);">
+            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"
+                fill="#EA4335" />
+            </svg>
+          </div>
+          <input id="otp-email" type="email" placeholder="you@gmail.com" style="width:100%;padding:11px 14px 11px 38px;border-radius:10px;
+                      border:1px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;font-size:0.88rem;outline:none;font-family:'Inter',sans-serif;"
+            onfocus="this.style.borderColor='#00D4C8'" onblur="this.style.borderColor='rgba(0,212,200,0.25)'"
+            onkeydown="if(event.key==='Enter') sendOtpClick()" />
+        </div>
+
+        <div id="auth-email-error" style="color:#f87171;font-size:0.78rem;margin-bottom:10px;display:none;"></div>
+
+        <button id="send-otp-btn" onclick="sendOtpClick()" style="width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;
+                     background:#00D4C8;color:#0A1628;font-size:0.9rem;font-weight:800;
+                     transition:background 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;">
+          Send OTP
+        </button>
+      </div>
+
+      <!-- Step 2: OTP verification -->
+      <div id="auth-step-otp" style="display:none;">
+        <button onclick="authShowStep('email')" style="background:none;border:none;color:#8BA0BC;cursor:pointer;
+                     font-size:0.82rem;margin-bottom:16px;padding:0;display:flex;align-items:center;gap:5px;">
+          ← Back
+        </button>
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:2rem;margin-bottom:8px;">🔐</div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;
+                    color:#f8f9ff;margin-bottom:4px;">Check your inbox</div>
+          <p style="color:#8BA0BC;font-size:0.8rem;">
+            We sent a 6-digit code to<br>
+            <span id="otp-sent-to" style="color:#00D4C8;font-weight:600;"></span>
+          </p>
+        </div>
+
+        <!-- 6 individual OTP boxes -->
+        <div id="otp-boxes" style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" type="text" style="width:44px;height:52px;text-align:center;font-size:1.4rem;font-weight:800;
+                      border-radius:10px;border:2px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;outline:none;transition:border-color 0.15s;" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" type="text" style="width:44px;height:52px;text-align:center;font-size:1.4rem;font-weight:800;
+                      border-radius:10px;border:2px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;outline:none;transition:border-color 0.15s;" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" type="text" style="width:44px;height:52px;text-align:center;font-size:1.4rem;font-weight:800;
+                      border-radius:10px;border:2px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;outline:none;transition:border-color 0.15s;" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" type="text" style="width:44px;height:52px;text-align:center;font-size:1.4rem;font-weight:800;
+                      border-radius:10px;border:2px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;outline:none;transition:border-color 0.15s;" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" type="text" style="width:44px;height:52px;text-align:center;font-size:1.4rem;font-weight:800;
+                      border-radius:10px;border:2px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;outline:none;transition:border-color 0.15s;" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" type="text" style="width:44px;height:52px;text-align:center;font-size:1.4rem;font-weight:800;
+                      border-radius:10px;border:2px solid rgba(0,212,200,0.25);background:#122040;
+                      color:#f8f9ff;outline:none;transition:border-color 0.15s;" />
+        </div>
+
+        <div id="auth-otp-error" style="color:#f87171;font-size:0.78rem;margin-bottom:10px;
+                                       text-align:center;display:none;"></div>
+
+        <button id="verify-otp-btn" onclick="verifyOtpClick()" style="width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;
+                     background:#00D4C8;color:#0A1628;font-size:0.9rem;font-weight:800;
+                     margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;
+                     transition:background 0.2s;">
+          Verify & Sign In
+        </button>
+
+        <div style="text-align:center;">
+          <span style="color:#8BA0BC;font-size:0.78rem;">Didn't receive it? </span>
+          <button id="resend-otp-btn" onclick="resendOtpClick()" style="background:none;border:none;color:#00D4C8;font-size:0.78rem;
+                       font-weight:600;cursor:pointer;padding:0;">
+            Resend code
+          </button>
+          <span id="resend-timer" style="color:#8BA0BC;font-size:0.78rem;display:none;"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- Navbar -->
+
+  <nav class="ts-navbar" id="mainNav">
+    <div class="container">
+      <div class="d-flex align-items-center justify-content-between w-100">
+
+        <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+          <img src="/static/images/Trip_Swarm_Logo.png" height="40px" width="40px" alt="Trip Swarm" class="brand-logo"
+            onerror="this.style.display='none'; document.getElementById('brand-fb').style.display='flex';" />
+          Trip<span>Swarm</span>
+        </a>
+
+        <!-- Desktop Nav -->
+
+        <ul class="navbar-nav d-none d-lg-flex flex-row align-items-center gap-1 mb-0">
+          <li class="nav-item"><a class="nav-link active" href="#home">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#try-it">Try It</a></li>
+          <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#how-it-works">How It Works</a></li>
+          <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+          <div class="nav-item ms-2 d-flex align-items-center" id="nav-auth-area">
+            <!-- Injected by JS based on session -->
+          </div>
+        </ul>
+
+        <!-- Mobile Toggler -->
+
+        <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      </div>
+
+      <!-- Mobile Menu -->
+
+      <div class="collapse" id="mobileMenu">
+        <ul class="navbar-nav pt-3 pb-2 d-flex flex-column gap-1">
+          <li class="nav-item"><a class="nav-link" href="#home" onclick="closeMobileMenu()">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#try-it" onclick="closeMobileMenu()">Try It</a></li>
+          <li class="nav-item"><a class="nav-link" href="#about" onclick="closeMobileMenu()">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#how-it-works" onclick="closeMobileMenu()">How It Works</a>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="#contact" onclick="closeMobileMenu()">Contact</a></li>
+          <div class="nav-item mt-2" id="mobile-auth-area">
+            <!-- Injected by JS -->
+          </div>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+
+  <section id="home">
+    <div class="container">
+      <div class="row align-items-center g-4">
+
+        <!-- Left -->
+
+        <div class="col-lg-7 hero-left reveal">
+          <div class="hero-eyebrow">
+            <i class="bi bi-lightning-charge-fill"></i>
+            Multi-Agent AI · LangGraph · Real-time
+          </div>
+          <h1 class="hero-title">
+            Plan Smarter<br>Trips with an<br>
+            <span class="accent">AI Swarm</span> of<br>
+            <span class="accent-gold">Agents</span>
+          </h1>
+          <p class="hero-sub">
+            TripSwarm deploys a swarm of specialized AI agents — flight finder, hotel scout, itinerary builder — to
+            craft your perfect trip in seconds. Powered by LangGraph.
+          </p>
+
+          <div id="hero-cta-area">
+            <!-- Injected by JS -->
+          </div>
+
+          <div class="hero-trust" id="hero-trust">
+            <div class="hero-trust-pill"><i class="bi bi-shield-lock-fill"></i><span>Secure OAuth 2.0</span></div>
+            <div class="hero-trust-pill"><i class="bi bi-lock-fill"></i><span>JWT Protected</span></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Carousel -->
+
+        <div class="col-lg-5 hero-right reveal" style="transition-delay:0.1s;">
+          <div class="demo-carousel-wrap" id="demoCarousel">
+            <div class="demo-card active" data-index="0">
+              <div class="card-tag"><i class="bi bi-calendar3"></i> Itinerary Planner</div>
+              <div class="card-screen">
+                <div class="card-screen-header">
+                  <div class="dot dot-r"></div>
+                  <div class="dot dot-y"></div>
+                  <div class="dot dot-g"></div>
+                  <span style="color:var(--muted);font-size:0.7rem;margin-left:8px;">TripSwarm Multi-Agent</span>
+                </div>
+                <div class="agent-badge"><i class="bi bi-airplane-engines-fill"></i> Flight Agent</div>
+                <div class="agent-badge"><i class="bi bi-map"></i> Destination Research Agent</div>
+                <div class="agent-badge"><i class="bi bi-calendar-check"></i> Itinerary Agent</div>
+                <div style="margin-top:10px;">
+                  <div class="mock-line long"></div>
+                  <div class="mock-line med gold"></div>
+                  <div class="mock-line short"></div>
+                  <div class="mock-line med"></div>
+                </div>
+              </div>
+              <h3 class="card-title">📅 7-Day Bali Itinerary</h3>
+              <p class="card-desc">AI-generated day-by-day plan with local food picks, attractions & budget estimate.
+              </p>
+            </div>
+            <div class="demo-card behind1" data-index="1">
+              <div class="card-tag"><i class="bi bi-chat-dots"></i> Travel Copilot</div>
+              <div class="card-screen">
+                <div class="card-screen-header">
+                  <div class="dot dot-r"></div>
+                  <div class="dot dot-y"></div>
+                  <div class="dot dot-g"></div>
+                  <span style="color:var(--muted);font-size:0.7rem;margin-left:8px;">RAG - Pinecone + BM25 ·
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Web Search - EXA MCP</span>
+                </div>
+                <div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;"><span
+                    style="color:var(--teal);">You:</span> What's the visa policy for India → Japan?</div>
+                <div style="font-size:0.72rem;color:var(--white);"><span style="color:var(--gold);">TripSwarm:</span>
+                  Indian passport holders can obtain a Japan tourist visa (Tanki)...</div>
+                <div class="mock-line long" style="margin-top:10px;"></div>
+                <div class="mock-line short"></div>
+              </div>
+              <h3 class="card-title">🔍 Travel Copilot</h3>
+              <p class="card-desc">Upload your travel docs. Ask anything. Hybrid semantic + keyword search gives
+                accurate, sourced answers. Exa Web search gives the live or current answers.</p>
+            </div>
+
+            <div class="demo-card behind2" data-index="2">
+              <div class="card-tag"><i class="bi bi-airplane"></i> Flight Finder</div>
+              <div class="card-screen">
+                <div class="card-screen-header">
+                  <div class="dot dot-r"></div>
+                  <div class="dot dot-y"></div>
+                  <div class="dot dot-g"></div>
+                  <span style="color:var(--muted);font-size:0.7rem;margin-left:8px;">SerpAPI</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <span style="font-size:0.82rem;font-weight:700;">MAA → NRT</span>
+                  <span style="font-size:0.7rem;color:var(--teal);">Multiple carriers</span>
+                </div>
+                <div class="mock-line long gold"></div>
+                <div class="mock-line med"></div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-top:8px;">IndiGo · Air Asia · Singapore
+                  Airlines...</div>
+              </div>
+              <h3 class="card-title">✈️ Live Flight Search</h3>
+
+              <p class="card-desc">Real-time flight data — airlines, durations, routes and schedules — surfaced by the
+                Flight Research Agent.</p>
+            </div>
+          </div>
+          <div class="carousel-dots" id="carouselDots">
+            <div class="c-dot active" onclick="goToCard(0)"></div>
+            <div class="c-dot" onclick="goToCard(1)"></div>
+            <div class="c-dot" onclick="goToCard(2)"></div>
+          </div>
+          <p class="swipe-hint"><i class="bi bi-hand-index"></i> Click cards to browse demos</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Try It -->
+
+  <section id="try-it">
+    <hr class="divider-line">
+    <div class="container">
+      <div class="text-center mb-2">
+        <div class="section-label mx-auto"><span>Try TripSwarm</span></div>
+        <h2 class="section-title reveal">Chat with the <span class="teal">AI Travel Brain</span></h2>
+        <p class="section-sub reveal" style="transition-delay:0.1s;">
+          Pick a mode — plan a full trip or ask a travel question. Sign in to unlock the full experience.
+        </p>
+      </div>
+
+      <div class="chat-widget reveal" style="transition-delay:0.15s;">
+        <div class="chat-header">
+          <div class="chat-logo">🌍</div>
+          <div>
+            <div class="chat-header-title">TripSwarm Assistant</div>
+            <div class="chat-header-sub">Powered by Multi-Agent AI · LangGraph</div>
+          </div>
+          <div class="chat-status"></div>
+        </div>
+
+        <div class="chat-tabs">
+          <button class="chat-tab active" id="tabPlan" onclick="switchChatTab('plan')">
+            <i class="bi bi-map-fill"></i> Travel Plan
+          </button>
+          <button class="chat-tab" id="tabQA" onclick="switchChatTab('qa')">
+            <i class="bi bi-patch-question-fill"></i> Travel Copilot
+          </button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg msg-ai">
+            <div class="msg-sender">TripSwarm</div>
+            <span id="welcomeMsg">🗺️ Tell me where you want to go! I'll deploy Flight, Research Destination &amp;
+              Create Itinerary to plan your perfect trip.</span>
+          </div>
+        </div>
+
+        <div id="chat-bottom-area"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+
+  <section id="about">
+    <hr class="divider-line">
+    <div class="container">
+      <div class="text-center mb-5">
+        <div class="section-label mx-auto"><span>About TripSwarm</span></div>
+        <h2 class="section-title reveal">Everything Your Trip Needs,<br><span class="teal">Handled by Agents</span></h2>
+        <div class="glow-sep mt-3"></div>
+      </div>
+      <div class="row g-4 mb-5">
+        <div class="col-md-6 col-lg-4 reveal">
+          <div class="feature-card h-100">
+            <div class="feature-icon icon-teal"><i class="bi bi-robot"></i></div>
+            <h4>Multi-Agent Swarm</h4>
+            <p>Four specialized agents — Flight, Hotel, Itinerary, and Response — collaborate via LangGraph to build
+              your travel plan end-to-end.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 reveal" style="transition-delay:0.05s;">
+          <div class="feature-card h-100">
+            <div class="feature-icon icon-gold"><i class="bi bi-search"></i></div>
+            <h4>Agentic RAG</h4>
+            <p>Upload PDFs, DOCX, or TXT travel docs. The RAG agent uses Pinecone + BM25 hybrid search to give sourced,
+              accurate answers.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 reveal" style="transition-delay:0.1s;">
+          <div class="feature-card h-100">
+            <div class="feature-icon icon-blue"><i class="bi bi-airplane-fill"></i></div>
+            <h4>Live Flight Data</h4>
+
+            <p>Real-time flight information via SerpAPI — airlines, durations, routes and schedules surfaced instantly.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 reveal" style="transition-delay:0.05s;">
+          <div class="feature-card h-100">
+            <div class="feature-icon icon-green"><i class="bi bi-map"></i></div>
+            <h4>Destination Research for Places, Hotels, Restaurants and Foods</h4>
+            <p>Budget, mid-range, and luxury hotel picks with nearby accommodations tailored to your destination and
+              travel style.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 reveal" style="transition-delay:0.1s;">
+          <div class="feature-card h-100">
+            <div class="feature-icon icon-purple"><i class="bi bi-chat-square-dots-fill"></i></div>
+            <h4>Persistent Chat History</h4>
+            <p>All your trip conversations are saved in PostgreSQL — pick up exactly where you left off, manage multiple
+              threads.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 reveal" style="transition-delay:0.15s;">
+          <div class="feature-card h-100">
+            <div class="feature-icon icon-orange"><i class="bi bi-file-earmark-pdf-fill"></i></div>
+            <h4>AI Travel Reports</h4>
+            <p>Download professionally formatted Markdown travel reports — complete itinerary, flights, hotels, tips,
+              and highlights in one file.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Flow -->
+
+      <div class="row align-items-center g-5 mt-2">
+        <div class="col-lg-6 reveal">
+          <div class="section-label"><span>How Agents Collaborate</span></div>
+          <h3 class="section-title" style="font-size:1.8rem;">The Swarm in Action</h3>
+          <p style="color:var(--muted);font-size:0.9rem;line-height:1.75;margin-top:0.8rem;">
+            When you ask TripSwarm to plan a trip, it doesn't use a single AI. It orchestrates a <strong
+              style="color:var(--teal);">graph of specialized agents</strong> via LangGraph, each handing off enriched
+            context to the next — like a swarm of experts collaborating on your behalf.
+          </p>
+          <div class="tech-stack-row" style="justify-content:flex-start;margin-top:1.5rem;">
+            <span class="tech-pill">FastAPI</span><span class="tech-pill">LangGraph</span>
+            <span class="tech-pill">Groq LLM</span><span class="tech-pill">Pinecone</span>
+            <span class="tech-pill">PostgreSQL</span><span class="tech-pill">Exa</span>
+          </div>
+        </div>
+        <div class="col-lg-6 reveal" style="transition-delay:0.1s;">
+          <div class="agent-flow">
+            <p
+              style="color:var(--muted);font-size:0.75rem;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.8px;">
+              Live agent pipeline</p>
+            <div class="agent-node" id="nodeUser">
+              <div class="node-icon icon-teal"><i class="bi bi-person-fill"></i></div><span>User Query</span><span
+                class="flow-badge">Input</span>
+            </div>
+            <div class="node-arrow"><i class="bi bi-arrow-down"></i></div>
+            <div class="agent-node" id="nodeFlight">
+              <div class="node-icon icon-blue"><i class="bi bi-airplane-fill"></i></div><span>Flight Research
+                Agent</span><span class="flow-badge">Agent 1</span>
+            </div>
+            <div class="node-arrow"><i class="bi bi-arrow-down"></i></div>
+            <div class="agent-node" id="nodeHotel">
+              <div class="node-icon icon-green"><i class="bi bi-map"></i></div><span>Destination Research
+                Agent</span><span class="flow-badge">Agent 2</span>
+            </div>
+            <div class="node-arrow"><i class="bi bi-arrow-down"></i></div>
+            <div class="agent-node" id="nodeItinerary">
+              <div class="node-icon icon-gold"><i class="bi bi-calendar-check"></i></div><span>Itinerary Planning
+                Agent</span><span class="flow-badge">Agent 3</span>
+            </div>
+            <div class="node-arrow"><i class="bi bi-arrow-down"></i></div>
+            <div class="agent-node" id="nodeResponse">
+              <div class="node-icon icon-purple"><i class="bi bi-file-earmark-text-fill"></i></div><span>Response
+                Formatting Agent</span><span class="flow-badge">Agent 4</span>
+            </div>
+            <div class="node-arrow"><i class="bi bi-arrow-down"></i></div>
+            <div class="agent-node" id="nodeOutput" style="border-color:var(--gold);">
+              <div class="node-icon icon-orange"><i class="bi bi-download"></i></div><span>AI Travel Report</span><span
+                class="flow-badge" style="background:rgba(245,166,35,0.12);color:var(--gold);">Output</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it Works -->
+
+  <section id="how-it-works">
+    <hr class="divider-line">
+    <div class="container">
+      <div class="text-center mb-5">
+        <div class="section-label mx-auto"><span>Getting Started</span></div>
+        <h2 class="section-title reveal">Trip Planning in<br><span class="teal">4 Simple Steps</span></h2>
+      </div>
+      <div class="row g-5 align-items-start">
+        <div class="col-lg-6 reveal">
+          <div class="step-item">
+            <div class="step-num">01</div>
+            <div class="step-content">
+              <h4>Sign in with Google</h4>
+              <p>One click, no passwords. Your account is secured via Google OAuth 2.0 and a JWT session token is issued
+                instantly.</p>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-num">02</div>
+            <div class="step-content">
+              <h4>Choose Your Mode</h4>
+              <p>Head to <strong style="color:var(--teal);">Travel Plan</strong> to build a full trip, or <strong
+                  style="color:var(--teal);">Travel Copilot</strong> to get RAG-powered answers from your uploaded
+                travel documents.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">03</div>
+            <div class="step-content">
+              <h4>Describe Your Dream Trip</h4>
+              <p>Type naturally — destination, duration, preferences. The AI swarm kicks in immediately and coordinates
+                all four agents in parallel.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">04</div>
+            <div class="step-content">
+              <h4>Get Your Travel Report</h4>
+              <p>Receive a full itinerary with flights, hotels, day-by-day plans, food tips, and highlights —
+                downloadable as a report.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Trip Builder -->
+        <div class="col-lg-6 reveal" style="transition-delay:0.1s;">
+          <div
+            style="background:var(--card-bg);border:1px solid rgba(0,212,200,0.12);border-radius:20px;padding:28px;backdrop-filter:blur(16px);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+              <span style="font-size:1.4rem;">🌏</span>
+              <div>
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem;">Quick Trip Builder</div>
+                <div style="color:var(--muted);font-size:0.72rem;">Preview how TripSwarm responds</div>
+              </div>
+            </div>
+
+            <div style="background:var(--navy-mid);border-radius:12px;padding:16px;margin-bottom:14px;">
+              <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">Choose a destination</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;" id="destBtns">
+                <button class="dest-btn" onclick="pickDest('Tokyo 🇯🇵')">Tokyo 🇯🇵</button>
+                <button class="dest-btn" onclick="pickDest('Bali 🇮🇩')">Bali 🇮🇩</button>
+                <button class="dest-btn" onclick="pickDest('Paris 🇫🇷')">Paris 🇫🇷</button>
+                <button class="dest-btn" onclick="pickDest('Dubai 🇦🇪')">Dubai 🇦🇪</button>
+              </div>
+            </div>
+
+            <div id="destPreview"
+              style="display:none;background:rgba(0,212,200,0.06);border:1px solid rgba(0,212,200,0.15);border-radius:12px;padding:16px;">
+              <div style="font-size:0.72rem;color:var(--teal);font-weight:600;margin-bottom:8px;">TRIPSWARM PREVIEW
+              </div>
+              <div id="destPreviewText"
+                style="font-size:0.83rem;line-height:1.65;color:var(--white);margin-bottom:14px;"></div>
+              <div id="dest-cta-area"></div>
+            </div>
+
+            <div
+              style="margin-top:14px;padding:12px;background:rgba(245,166,35,0.06);border-radius:10px;border:1px solid rgba(245,166,35,0.12);">
+              <div style="font-size:0.75rem;color:var(--gold);font-weight:600;margin-bottom:6px;"><i
+                  class="bi bi-stars"></i> Coming Soon</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <span class="tech-pill">Flight Booking</span><span class="tech-pill">Hotel Booking</span>
+                <span class="tech-pill">Visa Assistance</span><span class="tech-pill">Weather Agent</span>
+                <span class="tech-pill">Voice Assistant</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact">
+    <hr class="divider-line">
+    <div class="container">
+      <div class="text-center mb-5">
+        <div class="section-label mx-auto"><span>Contact & Connect</span></div>
+        <h2 class="section-title reveal">Built with <span class="gold">Passion</span> by<br>Saravanan S</h2>
+      </div>
+      <div class="contact-card reveal">
+        <div style="font-size:3rem;margin-bottom:16px;">👨‍💻</div>
+        <h3 style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:10px;">Saravanan S</h3>
+        <p style="color:var(--muted);font-size:0.9rem;line-height:1.7;max-width:480px;margin:0 auto 8px;">
+          Full-stack AI engineer passionate about multi-agent systems, LLM applications, and building tools that
+          actually make life easier. TripSwarm is a showcase of LangGraph-based swarm architecture in a real-world app.
+        </p>
+        <div class="contact-links">
+          <a href="https://github.com/Saravanan131201" target="_blank" class="contact-link github"><i
+              class="bi bi-github"></i> GitHub</a>
+          <a href="https://www.linkedin.com/in/saravanan-s1312" target="_blank" class="contact-link linkedin"><i
+              class="bi bi-linkedin"></i> LinkedIn</a>
+          <a href="https://github.com/Saravanan131201/Tripswarm-using-Langgraph" target="_blank"
+            class="contact-link email"><i class="bi bi-code-square"></i> Source Code</a>
+        </div>
+        <div style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);">
+          <p
+            style="color:var(--muted);font-size:0.78rem;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.6px;">
+            Tech Stack</p>
+          <div class="tech-stack-row">
+            <span class="tech-pill">Python</span><span class="tech-pill">FastAPI</span>
+            <span class="tech-pill">LangGraph</span><span class="tech-pill">LangChain</span>
+            <span class="tech-pill">Groq</span><span class="tech-pill">Pinecone</span>
+            <span class="tech-pill">PostgreSQL</span><span class="tech-pill">Jinja2</span>
+            <span class="tech-pill">Bootstrap</span><span class="tech-pill">Docker</span>
+            <span class="tech-pill">Render</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="ts-footer">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-4 col-md-6">
+          <div class="footer-brand">Trip<span>Swarm</span></div>
+          <p class="footer-tagline">AI-powered multi-agent travel planning. Built with LangGraph, FastAPI, PostgreSQL.
+          </p>
+          <div class="footer-social">
+            <a href="https://github.com/Saravanan131201" target="_blank"><i class="bi bi-github"></i></a>
+            <a href="https://www.linkedin.com/in/saravanan-s1312" target="_blank"><i class="bi bi-linkedin"></i></a>
+            <a href="https://github.com/Saravanan131201/Tripswarm-using-Langgraph" target="_blank"><i
+                class="bi bi-code-square"></i></a>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-3 col-6">
+          <div class="footer-heading">Navigate</div>
+          <ul class="footer-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#try-it">Try It</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-2 col-md-3 col-6">
+          <div class="footer-heading">Features</div>
+          <ul class="footer-links">
+            <li><a href="#about">Multi-Agent AI</a></li>
+            <li><a href="#about">Agentic RAG</a></li>
+            <li><a href="#about">Flight Search</a></li>
+            <li><a href="#about">Hotel Picks</a></li>
+            <li><a href="#about">Travel Reports</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-4 col-md-6">
+          <div class="footer-heading">Quick Start</div>
+          <p style="color:var(--muted);font-size:0.82rem;line-height:1.6;margin-bottom:14px;">
+            Sign in with Google and start planning your dream trip in seconds. No setup, no password — just AI-powered
+            travel planning.
+          </p>
+          <div id="footer-cta-area"></div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 TripSwarm · Built by <a href="https://github.com/Saravanan131201" target="_blank"
+            style="color:var(--teal);text-decoration:none;">Saravanan S</a> · All rights reserved.</p>
+        <div class="footer-social">
+          <a href="https://github.com/Saravanan131201" target="_blank"><i class="bi bi-github"></i></a>
+          <a href="https://www.linkedin.com/in/saravanan-s1312" target="_blank"><i class="bi bi-linkedin"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <div id="ts-toast">
+    <i class="bi bi-info-circle-fill" style="color:var(--teal);"></i>
+    <span id="toastMsg"></span>
+  </div>
+
+
+  <!--  TRIPSWARM — MOBILE HOMEPAGE LAYER -->
+
+  <!-- Mobile navbar right slot (injected into .ts-navbar)  -->
+  <div id="mob-nav-right" style="display:none;"></div>
+
+  <!-- Bottom Navigation -->
+  <nav id="mob-bottom-nav" style="display:none;">
+    <button class="mob-tab-btn active" id="mobtab-home" onclick="mobSwitchTab('home',this)">
+      <i class="bi bi-house-fill"></i>
+      <span>Home</span>
+    </button>
+    <button class="mob-tab-btn" id="mobtab-plan" onclick="mobSwitchTab('plan',this)">
+      <i class="bi bi-airplane-fill"></i>
+      <span>Plan</span>
+    </button>
+    <button class="mob-tab-btn" id="mobtab-trips" onclick="mobSwitchTab('trips',this)">
+      <i class="bi bi-luggage-fill"></i>
+      <span>Trips</span>
+    </button>
+    <button class="mob-tab-btn" id="mobtab-more" onclick="mobSwitchTab('more',this)">
+      <i class="bi bi-grid-fill"></i>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- Mobile Pane: HOME -->
+  <div class="mob-pane mob-active" id="mob-pane-home">
+    <!-- content injected by JS based on auth state -->
+  </div>
+
+  <!-- Mobile Pane: PLAN -->
+  <div class="mob-pane" id="mob-pane-plan">
+    <div class="mob-plan-header">
+      <div class="mob-plan-title">✈️ Trip Planner</div>
+      <div class="mob-plan-sub">Powered by Multi-Agent AI · LangGraph</div>
+    </div>
+
+    <!-- Clone of the Try-it chat widget, re-wired for mobile -->
+    <div class="chat-widget"
+      style="border-radius:0;border-left:none;border-right:none;border-top:none;box-shadow:none;max-width:100%;">
+      <div class="chat-header">
+        <div class="chat-logo">🌍</div>
+        <div>
+          <div class="chat-header-title">TripSwarm Assistant</div>
+          <div class="chat-header-sub">Flights · Hotels · Itinerary · Travel Copilot</div>
+        </div>
+        <div class="chat-status"></div>
+      </div>
+
+      <div class="chat-tabs">
+        <button class="chat-tab active" id="mob-tabPlan" onclick="mobSwitchChatTab('plan')">
+          <i class="bi bi-map-fill"></i> Travel Plan
+        </button>
+        <button class="chat-tab" id="mob-tabQA" onclick="mobSwitchChatTab('qa')">
+          <i class="bi bi-patch-question-fill"></i> Travel Copilot
+        </button>
+      </div>
+
+      <div class="chat-messages" id="mob-chatMessages" style="min-height:160px;max-height:38vh;overflow-y:auto;">
+        <div class="msg msg-ai">
+          <div class="msg-sender">TripSwarm</div>
+          <span id="mob-welcomeMsg">🗺️ Tell me where you want to go! I'll deploy Flight, Hotel &amp; Itinerary agents
+            to plan your perfect trip.</span>
+        </div>
+      </div>
+
+      <div id="mob-chat-bottom-area"></div>
+    </div>
+  </div>
+
+  <!-- Mobile Pane: TRIPS  -->
+  <div class="mob-pane" id="mob-pane-trips">
+    <div class="mob-trips-header">
+      <div class="mob-trips-title">My Trips</div>
+    </div>
+    <div id="mob-trips-inner">
+      <!-- injected by JS -->
+    </div>
+  </div>
+
+  <!--  Mobile Pane: MORE  -->
+  <div class="mob-pane" id="mob-pane-more">
+    <div id="mob-more-inner">
+      <!-- injected by JS -->
+    </div>
+  </div>
+
+
+
+  <!-- TRIPSWARM — MOBILE HOMEPAGE JAVASCRIPT -->
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* 1. DETECT MOBILE */
+
+      function isMobile() { return window.innerWidth <= 991; }
+
+      /* 2. POPULAR DESTINATIONS  */
+
+      var DESTS = [
+        { name: 'Bali', country: 'Indonesia', emoji: '🌴', prompt: 'Plan a 7-day trip to Bali from Chennai' },
+        { name: 'Tokyo', country: 'Japan', emoji: '🗼', prompt: 'Plan a 5-day trip to Tokyo from Chennai' },
+        { name: 'Paris', country: 'France', emoji: '🗺️', prompt: 'Plan a 7-day Paris trip from Chennai' },
+        { name: 'Dubai', country: 'UAE', emoji: '🏙️', prompt: 'Plan a 5-day Dubai trip from Chennai' },
+        { name: 'Singapore', country: 'Singapore', emoji: '🦁', prompt: 'Plan a 4-day Singapore trip from Chennai' },
+        { name: 'Maldives', country: 'Maldives', emoji: '🏝️', prompt: 'Plan a 5-day Maldives trip from Chennai' },
+      ];
+
+      /* ── Pixabay image cache ── */
+      var _imgCache = {};
+      var PIXABAY_KEY = '';  /* leave blank — your backend /api/city-image handles it */
+
+      /* Fetch city image — works for both logged-in and logged-out.
+         Falls back to a free Pixabay embed URL if the backend returns 401. */
+      function fetchCityImg(city) {
+        var cacheKey = city.toLowerCase().trim();
+        if (_imgCache[cacheKey]) return _imgCache[cacheKey];
+
+        var p = fetch('/api/city-image?city=' + encodeURIComponent(city), { credentials: 'include' })
+          .then(function (r) {
+            if (r.status === 401 || r.status === 403) {
+              /* Not logged in — use static fallback immediately */
+              return fetchPixabayDirect(city);
+            }
+            if (!r.ok) return fetchPixabayDirect(city);
+            return r.json().then(function (d) {
+              /* If backend returns no URL (e.g. Pixabay key missing), use fallback */
+              return d.url || fetchPixabayDirect(city);
+            });
+          })
+          .catch(function () { return fetchPixabayDirect(city); });
+
+        _imgCache[cacheKey] = p;
+        return p;
+      }
+
+      /* Static fallback images for logged-out users — Pixabay CDN direct links, no key needed */
+      var CITY_FALLBACKS = {
+        'bali': 'https://cdn.pixabay.com/photo/2016/01/09/18/27/journey-1130732_640.jpg',
+        'tokyo': 'https://cdn.pixabay.com/photo/2017/05/09/03/46/japan-2297426_640.jpg',
+        'paris': 'https://cdn.pixabay.com/photo/2015/10/06/18/26/eiffel-tower-975004_640.jpg',
+        'dubai': 'https://cdn.pixabay.com/photo/2016/11/19/15/49/dubai-1839830_640.jpg',
+        'singapore': 'https://cdn.pixabay.com/photo/2016/02/12/01/25/singapore-1196096_640.jpg',
+        'maldives': 'https://cdn.pixabay.com/photo/2019/05/11/11/46/maldives-4196110_640.jpg',
+        'london': 'https://cdn.pixabay.com/photo/2019/01/28/10/34/london-3959509_640.jpg',
+        'new york': 'https://cdn.pixabay.com/photo/2019/01/29/00/42/new-york-3959477_640.jpg',
+        'rome': 'https://cdn.pixabay.com/photo/2019/10/06/08/57/colosseum-4529605_640.jpg',
+        'bangkok': 'https://cdn.pixabay.com/photo/2019/03/12/20/39/river-4051314_640.jpg',
+        'sydney': 'https://cdn.pixabay.com/photo/2016/08/27/15/38/sydney-1624477_640.jpg',
+        'amsterdam': 'https://cdn.pixabay.com/photo/2016/04/15/12/00/amsterdam-1330168_640.jpg',
+        'beach': 'https://cdn.pixabay.com/photo/2016/08/11/23/48/beach-1587823_640.jpg',
+        'travel': 'https://cdn.pixabay.com/photo/2016/01/09/18/27/journey-1130732_640.jpg',
+      };
+
+      /* Fallback for logged-out users — returns a matching static Pixabay CDN image */
+      function fetchPixabayDirect(city) {
+        var key = city.toLowerCase().replace(/ travel$/i, '').trim();
+        /* Try exact match first */
+        if (CITY_FALLBACKS[key]) return Promise.resolve(CITY_FALLBACKS[key]);
+        /* Try partial match */
+        var keys = Object.keys(CITY_FALLBACKS);
+        for (var i = 0; i < keys.length; i++) {
+          if (key.indexOf(keys[i]) !== -1 || keys[i].indexOf(key) !== -1) {
+            return Promise.resolve(CITY_FALLBACKS[keys[i]]);
+          }
+        }
+        /* Ultimate fallback — generic travel image */
+        return Promise.resolve(CITY_FALLBACKS['travel']);
+      }
+
+      /* 3. HELPERS  */
+
+      function esc(str) {
+        return String(str)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function getGreeting() {
+        var h = new Date().getHours();
+        if (h < 12) return 'Good morning';
+        if (h < 17) return 'Good afternoon';
+        return 'Good evening';
+      }
+
+      /*  4. SHOW / HIDE MOBILE CHROME */
+
+      function showMobileChrome() {
+        var bottomNav = document.getElementById('mob-bottom-nav');
+        var navRight = document.getElementById('mob-nav-right');
+        if (bottomNav) {
+          bottomNav.style.display = 'flex';
+          bottomNav.classList.add('mob-nav-active');
+        }
+        if (navRight) navRight.style.display = 'flex';
+
+        /* Hide desktop sections */
+        var desktopIds = ['home', 'try-it', 'about', 'how-it-works', 'contact'];
+        desktopIds.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+        var footer = document.querySelector('.ts-footer');
+        if (footer) footer.style.display = 'none';
+        var dividers = document.querySelectorAll('.divider-line');
+        dividers.forEach(function (d) { d.style.display = 'none'; });
+
+        /* Ensure home pane is active on first show */
+        var homePanes = document.querySelectorAll('.mob-pane');
+        var anyActive = false;
+        homePanes.forEach(function (p) { if (p.classList.contains('mob-active')) anyActive = true; });
+        if (!anyActive) {
+          var homePane = document.getElementById('mob-pane-home');
+          if (homePane) {
+            homePane.style.display = 'block';
+            homePane.classList.add('mob-active');
+          }
+        } else {
+          /* Show whichever pane is active */
+          homePanes.forEach(function (p) {
+            p.style.display = p.classList.contains('mob-active') ? 'block' : 'none';
+          });
+        }
+      }
+
+      function hideMobileChrome() {
+        var bottomNav = document.getElementById('mob-bottom-nav');
+        var navRight = document.getElementById('mob-nav-right');
+        if (bottomNav) {
+          bottomNav.style.display = 'none';
+          bottomNav.classList.remove('mob-nav-active');
+        }
+        if (navRight) navRight.style.display = 'none';
+
+        /* Show desktop sections */
+        var desktopIds = ['home', 'try-it', 'about', 'how-it-works', 'contact'];
+        desktopIds.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = '';
+        });
+        var footer = document.querySelector('.ts-footer');
+        if (footer) footer.style.display = '';
+        var dividers = document.querySelectorAll('.divider-line');
+        dividers.forEach(function (d) { d.style.display = ''; });
+
+        /* Hide all mobile panes */
+        document.querySelectorAll('.mob-pane').forEach(function (p) {
+          p.style.display = 'none';
+        });
+      }
+
+      /* 5. "PLAN A TRIP" BUTTON ACTION  */
+
+      window.mobGoToPlan = function (prompt) {
+        if (window.SESSION && window.SESSION.loggedIn) {
+          if (prompt) {
+            setTimeout(function () {
+              window.location.href = '/chat?mode=travel&q=' + encodeURIComponent(prompt);
+            }, 150);
+          } else {
+            var planBtn = document.getElementById('mobtab-plan');
+            window.mobSwitchTab('plan', planBtn);
+          }
+        } else {
+          if (typeof openAuthModal === 'function') openAuthModal();
+        }
+      };
+
+      /* 6. RENDER MOBILE NAV-RIGHT  */
+
+      function renderMobNavRight() {
+        var el = document.getElementById('mob-nav-right');
+        if (!el) return;
+
+        var navContainer = document.querySelector('.ts-navbar .container');
+        if (navContainer && !navContainer.contains(el)) {
+          navContainer.appendChild(el);
+        }
+
+        if (window.SESSION && window.SESSION.loggedIn && window.SESSION.user) {
+          var u = window.SESSION.user;
+          var init = (u.name || u.email || 'U')[0].toUpperCase();
+          var avatarHtml = u.picture
+            ? '<img src="' + esc(u.picture) + '" alt="avatar">'
+            : '<div class="mob-init">' + esc(init) + '</div>';
+
+          el.innerHTML =
+            '<a href="/auth/logout" class="nav-link nav-logout"><i class="bi bi-box-arrow-right"></i> Logout</a>' +
+            '<button onclick="window._mobOpenProfile()" class="mob-avatar-pill" style="border:none;cursor:pointer;background:rgba(0,212,200,0.08);border:1px solid rgba(0,212,200,0.2);border-radius:100px;padding:4px 10px 4px 5px;display:inline-flex;align-items:center;gap:6px;">' +
+            avatarHtml +
+            '</button>';
+        } else {
+          el.innerHTML =
+            '<button class="mob-signin-btn" onclick="if(typeof openAuthModal===\'function\')openAuthModal()">' +
+            '<i class="bi bi-box-arrow-in-right"></i> Sign in' +
+            '</button>';
+        }
+      }
+
+      /* 7. IMAGE LOADER HELPER  */
+
+      function loadImgInto(cardId, phId, city, beforeSelector) {
+        fetchCityImg(city).then(function (url) {
+          var card = document.getElementById(cardId);
+          var ph = document.getElementById(phId);
+          if (!card || !url) { if (ph) ph.classList.remove('mob-img-loading'); return; }
+          var img = new Image();
+          img.alt = city;
+          img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+          img.onload = function () {
+            if (ph) ph.remove();
+            var before = beforeSelector ? card.querySelector(beforeSelector) : null;
+            if (before) card.insertBefore(img, before);
+            else card.prepend(img);
+          };
+          img.onerror = function () { if (ph) ph.classList.remove('mob-img-loading'); };
+          img.src = url;
+        });
+      }
+
+      /* 8. RENDER HOME PANE  */
+
+      function renderHomePane() {
+        var pane = document.getElementById('mob-pane-home');
+        if (!pane) return;
+        if (window.SESSION && window.SESSION.loggedIn && window.SESSION.user) {
+          renderHomePaneLoggedIn(pane);
+        } else {
+          renderHomePaneLoggedOut(pane);
+        }
+      }
+
+      /* ── LOGGED OUT ── */
+      function renderHomePaneLoggedOut(pane) {
+        pane.innerHTML =
+          '<div class="mob-hero-card">' +
+          '<div class="mob-hero-img-wrap" id="mob-hero-img-wrap">' +
+          '<div class="mob-img-loading mob-hero-img" id="mob-hero-img-placeholder" style="height:190px;background:linear-gradient(135deg,#122040,#1E3A5F);"></div>' +
+          '<div class="mob-hero-img-gradient"></div>' +
+          '</div>' +
+          '<div class="mob-hero-text">' +
+          '<div class="mob-hero-eyebrow"><i class="bi bi-lightning-charge-fill"></i> Multi-Agent AI</div>' +
+          '<h1 class="mob-hero-title">Plan Smarter Trips with <span class="t-teal">AI Agents</span></h1>' +
+          '<p class="mob-hero-sub">Flights, hotels, itineraries and more — all in one intelligent travel planner.</p>' +
+          '<button class="mob-hero-cta" onclick="window.mobGoToPlan(\'\')">' +
+          '<i class="bi bi-airplane-fill"></i> Plan a Trip' +
+          '</button>' +
+          '</div>' +
+          '</div>' +
+
+          '<div class="mob-feature-row">' +
+          [
+            { icon: 'bi-airplane-fill', label: 'Flights', cls: 'icon-teal' },
+            { icon: 'bi-geo-alt-fill', label: 'Popular Places', cls: 'icon-gold' },
+            { icon: 'bi-building', label: 'Hotels', cls: 'icon-green' },
+            { icon: 'bi-cup-hot-fill', label: 'Foods', cls: 'icon-blue' },
+            { icon: 'bi-shop', label: 'Restaurants', cls: 'icon-purple' },
+            { icon: 'bi-map-fill', label: 'Itinerary', cls: 'icon-orange' },
+          ].map(function (f) {
+            return '<div class="mob-feat-card" style="pointer-events:none;cursor:default;">' +
+              '<div class="mob-feat-icon ' + f.cls + '"><i class="bi ' + f.icon + '"></i></div>' +
+              '<div class="mob-feat-label">' + f.label + '</div>' +
+              '</div>';
+          }).join('') +
+          '</div>' +
+
+          '<div style="padding:0;margin-top:22px;">' +
+          '<div class="mob-section-label" style="padding:0 16px;margin-bottom:10px;">Popular Destinations</div>' +
+          '<div class="mob-dest-scroll" id="mob-dest-scroll">' +
+          DESTS.map(function (d, i) {
+            return '<a class="mob-dest-card" href="javascript:void(0)" id="mob-dest-' + i + '"' +
+              ' onclick="window.mobGoToPlan(\'' + esc(d.prompt) + '\')">' +
+              '<div class="mob-dest-placeholder mob-img-loading" id="mob-dest-ph-' + i + '" style="background:linear-gradient(135deg,#122040,#1E3A5F);">' + d.emoji + '</div>' +
+              '<div class="mob-dest-overlay"></div>' +
+              '<div class="mob-dest-info">' +
+              '<div class="mob-dest-name">' + esc(d.name) + '</div>' +
+              '<div class="mob-dest-country">' + esc(d.country) + '</div>' +
+              '</div>' +
+              '</a>';
+          }).join('') +
+          '</div>' +
+          '</div>';
+
+        /* Hero image */
+        fetchCityImg('Bali beach travel').then(function (url) {
+          var wrap = document.getElementById('mob-hero-img-wrap');
+          var ph = document.getElementById('mob-hero-img-placeholder');
+          if (!url || !wrap || !ph) return;
+          var img = new Image();
+          img.className = 'mob-hero-img';
+          img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+          img.alt = 'Travel';
+          img.onload = function () { ph.remove(); };
+          img.onerror = function () { ph.classList.remove('mob-img-loading'); ph.textContent = '✈️'; };
+          img.src = url;
+          wrap.insertBefore(img, ph);
+        });
+
+        /* Destination images — all in parallel */
+        DESTS.forEach(function (d, i) {
+          fetchCityImg(d.name + ' ' + d.country + ' travel').then(function (url) {
+            var card = document.getElementById('mob-dest-' + i);
+            var ph = document.getElementById('mob-dest-ph-' + i);
+            if (!card) return;
+            if (!url) { if (ph) ph.classList.remove('mob-img-loading'); return; }
+            var img = new Image();
+            img.alt = d.name;
+            img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+            img.onload = function () { if (ph) ph.remove(); card.insertBefore(img, card.querySelector('.mob-dest-overlay')); };
+            img.onerror = function () { if (ph) ph.classList.remove('mob-img-loading'); };
+            img.src = url;
+          });
+        });
+      }
+
+      /* ── LOGGED IN ── */
+      function renderHomePaneLoggedIn(pane) {
+        var u = window.SESSION.user;
+        var firstName = (u.name || u.email).split(' ')[0];
+
+        pane.innerHTML =
+          '<div class="mob-greeting">' +
+          '<div class="mob-greeting-text">' + esc(getGreeting()) + ', ' + esc(firstName) + ' 👋</div>' +
+          '</div>' +
+
+          '<div style="padding:0 16px;margin-top:4px;">' +
+
+          '<div id="mob-continue-wrap"></div>' +
+          '</div>' +
+
+          '<div style="margin-top:20px;">' +
+          '<div class="mob-section-label" style="padding:0 16px;">Quick Actions</div>' +
+          '<div class="mob-qa-grid">' +
+          '<a class="mob-qa-card" href="/chat?mode=travel">' +
+          '<div class="mob-qa-icon icon-teal"><i class="bi bi-airplane-fill"></i></div>' +
+          '<div class="mob-qa-title">Plan a Trip</div>' +
+          '<div class="mob-qa-sub">AI-powered itinerary</div>' +
+          '</a>' +
+          '<a class="mob-qa-card" href="/chat?mode=rag">' +
+          '<div class="mob-qa-icon icon-gold"><i class="bi bi-chat-square-dots-fill"></i></div>' +
+          '<div class="mob-qa-title">Travel Copilot</div>' +
+          '<div class="mob-qa-sub">Ask anything about travel</div>' +
+          '</a>' +
+          '<a class="mob-qa-card" href="/chat?mode=reports">' +
+          '<div class="mob-qa-icon icon-purple"><i class="bi bi-file-earmark-pdf-fill"></i></div>' +
+          '<div class="mob-qa-title">Travel Reports</div>' +
+          '<div class="mob-qa-sub">Your saved plans</div>' +
+          '</a>' +
+          '<a class="mob-qa-card" href="/chat?mode=docs">' +
+          '<div class="mob-qa-icon icon-blue"><i class="bi bi-folder-fill"></i></div>' +
+          '<div class="mob-qa-title">My Docs</div>' +
+          '<div class="mob-qa-sub">Uploaded documents</div>' +
+          '</a>' +
+          '</div>' +
+          '</div>' +
+
+          '<div style="padding:0;margin-top:20px;padding-bottom:4px;">' +
+          '<div class="mob-section-label" style="padding:0 16px;margin-bottom:10px;">Popular Destinations</div>' +
+          '<div class="mob-dest-scroll" id="mob-dest-scroll-in">' +
+          DESTS.map(function (d, i) {
+            return '<a class="mob-dest-card" href="javascript:void(0)" id="mob-indest-' + i + '"' +
+              ' onclick="window.mobPromptModal(\'' + esc(d.prompt) + '\')">' +
+              '<div class="mob-dest-placeholder mob-img-loading" id="mob-indest-ph-' + i + '" style="background:linear-gradient(135deg,#122040,#1E3A5F);">' + d.emoji + '</div>' +
+              '<div class="mob-dest-overlay"></div>' +
+              '<div class="mob-dest-info">' +
+              '<div class="mob-dest-name">' + esc(d.name) + '</div>' +
+              '<div class="mob-dest-country">' + esc(d.country) + '</div>' +
+              '</div>' +
+              '</a>';
+          }).join('') +
+          '</div>' +
+          '</div>';
+
+        loadContinueTrip();
+
+        DESTS.forEach(function (d, i) {
+          fetchCityImg(d.name + ' ' + d.country + ' travel').then(function (url) {
+            var card = document.getElementById('mob-indest-' + i);
+            var ph = document.getElementById('mob-indest-ph-' + i);
+            if (!card) return;
+            if (!url) { if (ph) ph.classList.remove('mob-img-loading'); return; }
+            var img = new Image();
+            img.alt = d.name;
+            img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+            img.onload = function () { if (ph) ph.remove(); card.insertBefore(img, card.querySelector('.mob-dest-overlay')); };
+            img.onerror = function () { if (ph) ph.classList.remove('mob-img-loading'); };
+            img.src = url;
+          });
+        });
+      }
+
+      function loadContinueTrip() {
+        var wrap = document.getElementById('mob-continue-wrap');
+        if (!wrap) return;
+
+        fetch('/api/reports/categorised', { credentials: 'include' })
+          .then(function (res) { if (!res.ok) throw new Error(); return res.json(); })
+          .then(function (data) {
+            var allTrips = (data.live || []).concat(data.upcoming || []).concat(data.past || []);
+            if (!allTrips.length) {
+              wrap.innerHTML =
+                '<div style="background:rgba(30,58,95,0.45);border:1px solid rgba(0,212,200,0.1);border-radius:14px;padding:18px;text-align:center;">' +
+                '<p style="color:var(--muted);font-size:0.78rem;margin-bottom:12px;">No trips yet — start planning your next adventure.</p>' +
+                '<button class="mob-hero-cta" style="font-size:0.8rem;padding:10px 18px;width:auto;display:inline-flex;" onclick="window.mobGoToPlan(\'\')">' +
+                '<i class="bi bi-airplane-fill"></i> Plan a Trip' +
+                '</button>' +
+                '</div>';
+              return;
+            }
+
+            var trip = allTrips[0];
+            var city = trip.destination_city || trip.title || 'Your Trip';
+            var dateStr = '';
+            if (trip.start_date && trip.end_date) {
+              var s = new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              var e = new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              dateStr = s + ' – ' + e;
+            }
+
+            var contUrl = '/chat?mode=travel';
+            if (trip.thread_id) contUrl += '&thread=' + trip.thread_id;
+            if (trip.assistant_chat_id) contUrl += '&msg=' + trip.assistant_chat_id;
+
+            wrap.innerHTML =
+              '<a class="mob-continue-card" href="' + contUrl + '" id="mob-cont-card">' +
+              '<div class="mob-img-loading" id="mob-cont-img-ph" style="position:absolute;inset:0;background:linear-gradient(135deg,#122040,#1E3A5F);"></div>' +
+              '<div class="mob-continue-card-gradient"></div>' +
+              '<div class="mob-continue-info">' +
+              '<div class="mob-continue-label">Your Latest Plan</div>' +
+              '<div class="mob-continue-city">' + esc(city) + '</div>' +
+              (dateStr ? '<div class="mob-continue-dates">' + esc(dateStr) + '</div>' : '') +
+              '</div>' +
+              '<div class="mob-continue-arrow"><i class="bi bi-chevron-right"></i></div>' +
+              '</a>';
+
+            fetchCityImg(city + ' travel').then(function (url) {
+              var card = document.getElementById('mob-cont-card');
+              var ph = document.getElementById('mob-cont-img-ph');
+              if (!card || !url) { if (ph) { ph.classList.remove('mob-img-loading'); ph.remove(); } return; }
+              var img = new Image();
+              img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+              img.alt = city;
+              img.onload = function () { if (ph) ph.remove(); card.insertBefore(img, card.querySelector('.mob-continue-card-gradient')); };
+              img.onerror = function () { if (ph) { ph.classList.remove('mob-img-loading'); ph.remove(); } };
+              img.src = url;
+            });
+          })
+          .catch(function () {
+            var wrap2 = document.getElementById('mob-continue-wrap');
+            if (wrap2) wrap2.innerHTML = '<div style="color:var(--muted);font-size:0.78rem;padding:10px 0;">Could not load trip data.</div>';
+          });
+      }
+
+      /* ─────────────────────────────────────────────────────────────
+         9. RENDER TRIPS PANE
+      ───────────────────────────────────────────────────────────── */
+      function renderTripsPane() {
+        var inner = document.getElementById('mob-trips-inner');
+        if (!inner) return;
+
+        if (!(window.SESSION && window.SESSION.loggedIn)) {
+          inner.innerHTML =
+            '<div class="mob-trips-auth-card">' +
+            '<span class="mob-trips-auth-icon">✈️</span>' +
+            '<div class="mob-trips-auth-title">Your trips are waiting</div>' +
+            '<div class="mob-trips-auth-sub">Sign in to save your travel plans and access them anytime.</div>' +
+            '<div class="mob-trips-auth-btns">' +
+            '<button class="mob-auth-google-btn" onclick="switchToTermsModal()">' +
+            '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google"/> Continue with Google' +
+            '</button>' +
+            '<button class="mob-auth-otp-btn" onclick="openAuthModal();authShowStep(\'email\')">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg>' +
+            ' Sign in with OTP' +
+            '</button>' +
+            '</div>' +
+            '<div class="mob-why-signin">' +
+            '<div class="mob-why-title">Why sign in?</div>' +
+            '<div class="mob-why-item"><i class="bi bi-check-circle-fill"></i> Saved itineraries</div>' +
+            '<div class="mob-why-item"><i class="bi bi-check-circle-fill"></i> Travel reports</div>' +
+            '<div class="mob-why-item"><i class="bi bi-check-circle-fill"></i> Trip history</div>' +
+            '</div>' +
+            '</div>';
+          return;
+        }
+
+        inner.innerHTML =
+          '<div class="mob-trips-tabs">' +
+          '<button class="mob-trips-tab-btn active" id="mob-ttab-upcoming" onclick="window.mobSwitchTripsTab(\'upcoming\',this)">Upcoming</button>' +
+          '<button class="mob-trips-tab-btn" id="mob-ttab-live" onclick="window.mobSwitchTripsTab(\'live\',this)">Live</button>' +
+          '<button class="mob-trips-tab-btn" id="mob-ttab-past" onclick="window.mobSwitchTripsTab(\'past\',this)">Past</button>' +
+          '</div>' +
+          '<div id="mob-trips-content" style="padding:0 16px 20px;"></div>' +
+          '<a href="/chat?mode=travel" class="mob-new-trip-btn"><i class="bi bi-plus-circle-fill"></i> Plan a New Trip</a>';
+
+        mobLoadTripsData('upcoming');
+      }
+
+      var MOB_TRIPS_DATA = null;
+
+      window.mobSwitchTripsTab = function (tab, btn) {
+        document.querySelectorAll('.mob-trips-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        if (btn) btn.classList.add('active');
+        mobLoadTripsData(tab);
+      };
+
+      function mobLoadTripsData(tab) {
+        var content = document.getElementById('mob-trips-content');
+        if (!content) return;
+        content.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);"><i class="bi bi-hourglass-split" style="font-size:1.5rem;"></i></div>';
+
+        var doRender = function (data) {
+          MOB_TRIPS_DATA = data;
+          var trips = data[tab] || [];
+          var liveBtn = document.getElementById('mob-ttab-live');
+          if (liveBtn) liveBtn.style.display = (data.live && data.live.length) ? '' : 'none';
+
+          if (!trips.length) {
+            content.innerHTML =
+              '<div class="mob-trips-empty">' +
+              '<i class="bi bi-suitcase"></i>' +
+              '<p>' + (tab === 'upcoming' ? 'No upcoming trips.' : tab === 'live' ? 'No live trips.' : 'No past trips.') + '</p>' +
+              (tab === 'upcoming' ? '<button class="mob-hero-cta" style="font-size:0.8rem;padding:10px 20px;width:auto;display:inline-flex;" onclick="window.mobGoToPlan(\'\')">Plan a Trip</button>' : '') +
+              '</div>';
+            return;
+          }
+
+          content.innerHTML = '';
+          trips.forEach(function (trip, idx) {
+            var city = trip.destination_city || trip.title || 'Trip';
+            var dateStr = '';
+            if (trip.start_date && trip.end_date) {
+              var s = new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              var e = new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              dateStr = s + ' – ' + e;
+            }
+
+            // Days count
+            var daysHtml = '';
+            if (trip.start_date && trip.end_date) {
+              var tripDays = Math.round((new Date(trip.end_date) - new Date(trip.start_date)) / 86400000) + 1;
+              daysHtml = '<span style="color:rgba(139,160,188,0.4);margin:0 4px;">|</span>' +
+                '<span style="color:var(--teal);font-weight:700;font-size:0.62rem;">' + tripDays + ' day' + (tripDays !== 1 ? 's' : '') + '</span>';
+            }
+
+            const daysUntil = trip.start_date
+              ? Math.ceil((new Date(trip.start_date) - new Date()) / 86400000)
+              : null;
+
+            const badgeHtml = daysUntil !== null ? `✈ In ${daysUntil}d` : '✈ Upcoming'
+
+
+            var badgeCls = tab === 'live' ? 'live' : tab === 'upcoming' ? 'upcoming' : 'past';
+            var badgeTxt = tab === 'live' ? '🟢 Live' : tab === 'upcoming' ? badgeHtml : '🕐 Past';
+
+            var threadId = trip.thread_id;
+            var assistantChatId = trip.assistant_chat_id || null;
+            var reportId = trip.id;
+            var isFav = !!trip.is_favourite;
+            var feedback = trip.feedback || null;
+
+            var card = document.createElement('div');
+            card.className = 'mob-report-card';
+            card.style.cssText = 'cursor:pointer;flex-direction:column;padding:0;overflow:hidden;';
+
+            // Top row: image + info + fav + chevron
+            var topRow = document.createElement('div');
+            topRow.style.cssText = 'display:flex;align-items:stretch;';
+            topRow.innerHTML =
+              '<div class="mob-report-img-placeholder mob-img-loading" id="mob-rc-ph-' + idx + '" style="background:linear-gradient(135deg,#122040,#1E3A5F);flex-shrink:0;">🗺️</div>' +
+              '<div class="mob-report-info" style="flex:1;">' +
+              '<div class="mob-report-city">' + esc(city) + '</div>' +
+              (dateStr ? '<div class="mob-report-dates" style="display:flex;align-items:center;gap:2px;"><i class="bi bi-calendar3" style="font-size:0.6rem;"></i> <span>' + esc(dateStr) + '</span>' + daysHtml + '</div>' : '') +
+              '<div class="mob-report-badge ' + badgeCls + '">' + badgeTxt + '</div>' +
+              '</div>' +
+              '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 10px;">' +
+              '<button class="mob-trip-fav-btn" id="mob-fav-' + idx + '" data-report-id="' + reportId + '" data-fav="' + (isFav ? '1' : '0') + '"onclick="event.stopPropagation();window._mobToggleFav(this,\'' + reportId + '\')" style="background:none;border:none;cursor:pointer;padding:4px;font-size:1rem;color:' + (isFav ? '#f87171' : 'var(--muted)') + ';">' +
+              '<i class="bi ' + (isFav ? 'bi-heart-fill' : 'bi-heart') + '"></i>' +
+              '</button>' +
+              '<div style="color:var(--muted);font-size:0.85rem;"><i class="bi bi-chevron-right"></i></div>' +
+              '</div>';
+
+            card.appendChild(topRow);
+
+            // Feedback bar (for past trips)
+            if (tab === 'past') {
+              var fbBar = document.createElement('div');
+              fbBar.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid rgba(255,255,255,0.05);background:rgba(10,22,40,0.3);';
+              fbBar.innerHTML =
+                '<span style="font-size:0.65rem;color:var(--muted);flex:1;">Was this helpful?</span>' +
+                '<button id="mob-fb-like-' + idx + '"onclick="event.stopPropagation();window._mobSetFeedback(\'' + reportId + '\',\'like\',' + idx + ')" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;font-size:0.85rem;color:' + (feedback === 'like' ? '#4ade80' : 'var(--muted)') + ';' + (feedback === 'like' ? 'background:rgba(74,222,128,0.1);' : '') + '">' +
+                '<i class="bi bi-hand-thumbs-up' + (feedback === 'like' ? '-fill' : '') + '"></i>' +
+                '</button>' +
+                '<button id="mob-fb-dis-' + idx + '"onclick="event.stopPropagation();window._mobSetFeedback(\'' + reportId + '\',\'dislike\',' + idx + ')" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;font-size:0.85rem;color:' + (feedback === 'dislike' ? '#f87171' : 'var(--muted)') + ';' + (feedback === 'dislike' ? 'background:rgba(248,113,113,0.1);' : '') + '">' +
+                '<i class="bi bi-hand-thumbs-down' + (feedback === 'dislike' ? '-fill' : '') + '"></i>' +
+                '</button>';
+              card.appendChild(fbBar);
+            }
+
+            // Navigate on card click (top row)
+            (function (tid, acid) {
+              topRow.onclick = function () {
+                // Navigate to /chat with thread + message params
+                var url = '/chat?mode=travel';
+                if (tid) url += '&thread=' + tid;
+                if (acid) url += '&msg=' + acid;
+                window.location.href = url;
+              };
+            })(threadId, assistantChatId);
+
+            content.appendChild(card);
+
+            // Load image
+            fetchCityImg(city + ' travel').then(function (url) {
+              var ph = document.getElementById('mob-rc-ph-' + idx);
+              if (!ph || !url) { if (ph) ph.classList.remove('mob-img-loading'); return; }
+              var img = new Image();
+              img.className = 'mob-report-img';
+              img.alt = city;
+              img.onload = function () { ph.replaceWith(img); };
+              img.onerror = function () { ph.classList.remove('mob-img-loading'); };
+              img.src = url;
+            });
+          });
+        };
+
+        if (MOB_TRIPS_DATA) { doRender(MOB_TRIPS_DATA); return; }
+
+        fetch('/api/reports/categorised', { credentials: 'include' })
+          .then(function (res) { if (!res.ok) throw new Error(); return res.json(); })
+          .then(doRender)
+          .catch(function () {
+            content.innerHTML = '<div class="mob-trips-empty"><i class="bi bi-exclamation-triangle"></i><p>Failed to load trips.</p></div>';
+          });
+      }
+
+      /* ── Favourite toggle for mobile trips ── */
+      window._mobToggleFav = function (btn, reportId) {
+        fetch('/api/reports/' + reportId + '/favourite', { method: 'PATCH', credentials: 'include' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var isFav = data.is_favourite;
+            btn.style.color = isFav ? '#f87171' : 'var(--muted)';
+            var icon = btn.querySelector('i');
+            if (icon) icon.className = isFav ? 'bi bi-heart-fill' : 'bi bi-heart';
+            btn.dataset.fav = isFav ? '1' : '0';
+          })
+          .catch(function (e) { console.error('fav toggle error', e); });
+      };
+
+      /* ── Feedback (like/dislike) for mobile trips ── */
+      window._mobSetFeedback = function (reportId, value, idx) {
+        var likeBtn = document.getElementById('mob-fb-like-' + idx);
+        var disBtn = document.getElementById('mob-fb-dis-' + idx);
+        // Determine current state — toggle off if already active
+        var isLikeActive = likeBtn && likeBtn.querySelector('.bi-hand-thumbs-up-fill');
+        var isDisActive = disBtn && disBtn.querySelector('.bi-hand-thumbs-down-fill');
+        var payload = null;
+        if (value === 'like' && !isLikeActive) payload = 'like';
+        if (value === 'dislike' && !isDisActive) payload = 'dislike';
+
+        fetch('/api/reports/' + reportId + '/feedback', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ feedback: payload }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var fb = data.feedback;
+            // Reset both buttons
+            if (likeBtn) {
+              likeBtn.style.color = fb === 'like' ? '#4ade80' : 'var(--muted)';
+              likeBtn.style.background = fb === 'like' ? 'rgba(74,222,128,0.1)' : '';
+              var li = likeBtn.querySelector('i');
+              if (li) li.className = fb === 'like' ? 'bi bi-hand-thumbs-up-fill' : 'bi bi-hand-thumbs-up';
+            }
+            if (disBtn) {
+              disBtn.style.color = fb === 'dislike' ? '#f87171' : 'var(--muted)';
+              disBtn.style.background = fb === 'dislike' ? 'rgba(248,113,113,0.1)' : '';
+              var di = disBtn.querySelector('i');
+              if (di) di.className = fb === 'dislike' ? 'bi bi-hand-thumbs-down-fill' : 'bi bi-hand-thumbs-down';
+            }
+          })
+          .catch(function (e) { console.error('feedback error', e); });
+      };
+
+      /*  10. RENDER MORE PANE */
+
+      function renderMorePane() {
+        var inner = document.getElementById('mob-more-inner');
+        if (!inner) return;
+        var isLoggedIn = window.SESSION && window.SESSION.loggedIn && window.SESSION.user;
+
+        var profileHtml = '';
+        if (isLoggedIn) {
+          var u = window.SESSION.user;
+          var init = (u.name || 'U')[0].toUpperCase();
+          var avHtml = u.picture
+            ? '<img class="mob-more-avatar" src="' + esc(u.picture) + '" alt="avatar">'
+            : '<div class="mob-more-avatar-init">' + esc(init) + '</div>';
+          profileHtml =
+            '<div class="mob-more-profile" onclick="window._mobOpenProfile()" style="cursor:pointer;">' +
+            avHtml +
+            '<div class="mob-more-user-info">' +
+            '<div class="mob-more-user-name">' + esc(u.name || '') + '</div>' +
+            '<div class="mob-more-user-email">' + esc(u.email || '') + '</div>' +
+            '</div>' +
+            '<div style="margin-left:auto;color:var(--muted);font-size:0.85rem;"><i class="bi bi-chevron-right"></i></div>' +
+            '</div>';
+        }
+
+        // ── Feature cards content ──
+        var featureCards = [
+          { icon: 'bi-robot', cls: 'icon-teal', title: 'Multi-Agent Swarm', desc: 'Four specialized agents — Flight, Hotel, Itinerary, and Response — collaborate via LangGraph to build your travel plan end-to-end.' },
+          { icon: 'bi-search', cls: 'icon-gold', title: 'Agentic RAG', desc: 'Upload PDFs, DOCX, or TXT travel docs. The RAG agent uses Pinecone + BM25 hybrid search to give sourced, accurate answers.' },
+          { icon: 'bi-airplane-fill', cls: 'icon-blue', title: 'Live Flight Data', desc: 'Real-time flight information via SerpAPI — airlines, durations, routes and schedules surfaced instantly.' },
+          { icon: 'bi-map', cls: 'icon-green', title: 'Destination Research', desc: 'Budget, mid-range, and luxury hotel picks with nearby accommodations tailored to your destination and travel style.' },
+          { icon: 'bi-chat-square-dots-fill', cls: 'icon-purple', title: 'Persistent Chat History', desc: 'All your trip conversations are saved in PostgreSQL — pick up exactly where you left off, manage multiple threads.' },
+          { icon: 'bi-file-earmark-pdf-fill', cls: 'icon-orange', title: 'AI Travel Reports', desc: 'Download professionally formatted Markdown travel reports — complete itinerary, flights, hotels, tips, and highlights in one file.' },
+        ];
+        var featureCardsHtml = '<div style="display:flex;flex-direction:column;gap:10px;padding:14px 0 4px;">' +
+          featureCards.map(function (f) {
+            return '<div class="mob-more-feature-card">' +
+              '<div class="feature-icon ' + f.cls + '"><i class="bi ' + f.icon + '"></i></div>' +
+              '<div class="mob-more-feature-text">' +
+              '<div class="mob-more-feature-title">' + f.title + '</div>' +
+              '<div class="mob-more-feature-desc">' + f.desc + '</div>' +
+              '</div>' +
+              '</div>';
+          }).join('') +
+          '</div>';
+
+        // ── Agent Pipeline content ──
+        var agentNodes = [
+          { icon: 'bi-person-fill', cls: 'icon-teal', label: 'User Query', badge: 'Input' },
+          { icon: 'bi-airplane-fill', cls: 'icon-blue', label: 'Flight Research Agent', badge: 'Agent 1' },
+          { icon: 'bi-map', cls: 'icon-green', label: 'Destination Research Agent', badge: 'Agent 2' },
+          { icon: 'bi-calendar-check', cls: 'icon-gold', label: 'Itinerary Planning Agent', badge: 'Agent 3' },
+          { icon: 'bi-file-earmark-text-fill', cls: 'icon-purple', label: 'Response Formatting Agent', badge: 'Agent 4' },
+          { icon: 'bi-download', cls: 'icon-orange', label: 'AI Travel Report', badge: 'Output', borderGold: true },
+        ];
+        var pipelineHtml = '<div style="padding:14px 0 4px;">' +
+          '<p style="color:var(--muted);font-size:0.68rem;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px;">How agents collaborate</p>' +
+          agentNodes.map(function (n, idx) {
+            var arrow = idx < agentNodes.length - 1 ? '<div class="mob-agent-arrow"><i class="bi bi-arrow-down"></i></div>' : '';
+            return '<div class="mob-agent-node" id="mob-pipeline-node-' + idx + '" style="' + (n.borderGold ? 'border-color:var(--gold);' : '') + '">' +
+              '<div class="mob-an-icon ' + n.cls + '"><i class="bi ' + n.icon + '"></i></div>' +
+              '<span style="font-size:0.75rem;font-weight:600;flex:1;">' + n.label + '</span>' +
+              '<span class="mob-agent-badge">' + n.badge + '</span>' +
+              '</div>' + arrow;
+          }).join('') +
+          '</div>';
+
+        // ── How It Works content ──
+        var howItWorksHtml = '<div style="padding:10px 0 4px;">' +
+          [
+            { num: '01', title: 'Sign in', desc: 'One click via Google OAuth 2.0 — no passwords.' },
+            { num: '02', title: 'Choose Mode', desc: 'Travel Plan or Travel Copilot from your docs.' },
+            { num: '03', title: 'Describe Your Trip', desc: 'Type naturally — the AI swarm coordinates all agents.' },
+            { num: '04', title: 'Get Your Report', desc: 'Full itinerary, flights, hotels — downloadable as PDF.' },
+          ].map(function (s, idx) {
+            return '<div class="mob-hiw-step" style="' + (idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.04);' : '') + '">' +
+              '<div class="mob-hiw-num">' + s.num + '</div>' +
+              '<div class="mob-hiw-text"><h5>' + s.title + '</h5><p>' + s.desc + '</p></div>' +
+              '</div>';
+          }).join('') +
+          '</div>';
+
+        // ── Quick Trip Builder content ──
+        var destBtns = ['Tokyo 🇯🇵', 'Bali 🇮🇩', 'Paris 🇫🇷', 'Dubai 🇦🇪'].map(function (d) {
+          return '<button class="dest-btn" style="font-size:0.75rem;padding:5px 10px;" onclick="mobPickDest(\'' + esc(d) + '\')">' + d + '</button>';
+        }).join('');
+        var quickTripHtml =
+          '<div style="padding:10px 0 4px;">' +
+          '<div style="background:var(--navy-mid);border-radius:10px;padding:12px;margin-bottom:10px;">' +
+          '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:6px;">Choose a destination</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;" id="mob-dest-btns">' + destBtns + '</div>' +
+          '</div>' +
+          '<div id="mob-dest-preview" style="display:none;background:rgba(0,212,200,0.06);border:1px solid rgba(0,212,200,0.15);border-radius:10px;padding:12px;">' +
+          '<div style="font-size:0.65rem;color:var(--teal);font-weight:600;margin-bottom:6px;">TRIPSWARM PREVIEW</div>' +
+          '<div id="mob-dest-preview-text" style="font-size:0.76rem;line-height:1.6;color:var(--white);margin-bottom:10px;"></div>' +
+          '<div id="mob-dest-preview-cta"></div>' +
+          '</div>' +
+          '<div style="margin-top:10px;padding:10px;background:rgba(245,166,35,0.06);border-radius:8px;border:1px solid rgba(245,166,35,0.12);">' +
+          '<div style="font-size:0.68rem;color:var(--gold);font-weight:600;margin-bottom:5px;"><i class="bi bi-stars"></i> Coming Soon</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:5px;">' +
+          ['Flight Booking', 'Hotel Booking', 'Visa Assistance', 'Weather Agent', 'Voice Assistant'].map(function (t) { return '<span class="mob-tech-pill">' + t + '</span>'; }).join('') +
+          '</div>' +
+          '</div>' +
+          '</div>';
+
+        // ── Contact content ──
+        var contactHtml =
+          '<div style="padding:10px 0 4px;text-align:center;">' +
+          '<div style="font-size:2rem;margin-bottom:8px;">👨‍💻</div>' +
+          '<div style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:0.95rem;margin-bottom:6px;">Saravanan S</div>' +
+          '<p style="color:var(--muted);font-size:0.73rem;line-height:1.6;margin-bottom:12px;">Full-stack AI engineer passionate about multi-agent systems and LLM applications.</p>' +
+          '<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
+          '<a href="https://github.com/Saravanan131201" target="_blank" class="mob-contact-link github"><i class="bi bi-github"></i> GitHub</a>' +
+          '<a href="https://www.linkedin.com/in/saravanan-s1312" target="_blank" class="mob-contact-link linkedin"><i class="bi bi-linkedin"></i> LinkedIn</a>' +
+          '<a href="https://github.com/Saravanan131201/Tripswarm-using-Langgraph" target="_blank" class="mob-contact-link code"><i class="bi bi-code-square"></i> Source</a>' +
+          '</div>' +
+          '<div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">' +
+          '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;">' +
+          ['Python', 'FastAPI', 'LangGraph', 'Groq', 'Pinecone', 'PostgreSQL', 'Docker'].map(function (t) { return '<span class="mob-tech-pill">' + t + '</span>'; }).join('') +
+          '</div>' +
+          '</div>' +
+          '</div>';
+
+        // ── Accordion sections definition ──
+        var sections = [
+          { key: 'about', icon: 'bi-info-circle-fill', iconCls: 'icon-teal', title: 'About TripSwarm', content: featureCardsHtml, onOpen: null, alwaysOpen: false },
+          { key: 'pipeline', icon: 'bi-diagram-3-fill', iconCls: 'icon-blue', title: 'Live Agent Pipeline', content: pipelineHtml, onOpen: null, alwaysOpen: false },
+          { key: 'hiw', icon: 'bi-list-ol', iconCls: 'icon-gold', title: 'How It Works', content: howItWorksHtml, onOpen: null, alwaysOpen: false },
+          { key: 'qtb', icon: 'bi-map-fill', iconCls: 'icon-purple', title: 'Quick Trip Builder', content: quickTripHtml, onOpen: '_renderMobDestCta', alwaysOpen: false },
+          { key: 'contact', icon: 'bi-person-lines-fill', iconCls: 'icon-green', title: 'Contact & Connect', content: contactHtml, onOpen: null, alwaysOpen: false },
+        ];
+
+        var accordionHtml = sections.map(function (sec) {
+          var isOpen = !!sec.alwaysOpen;
+          return '<div class="mob-acc-card" id="mob-acc-' + sec.key + '">' +
+            '<div class="mob-acc-header" onclick="window._mobAccToggle(\'' + sec.key + '\'' + (sec.onOpen ? ',\'' + sec.onOpen + '\'' : '') + ')">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div class="mob-acc-icon ' + sec.iconCls + '"><i class="bi ' + sec.icon + '"></i></div>' +
+            '<span class="mob-acc-title">' + sec.title + '</span>' +
+            '</div>' +
+            '<i class="bi bi-chevron-right mob-acc-chev" id="mob-acc-chev-' + sec.key + '" style="' + (isOpen ? 'transform:rotate(90deg);' : '') + '"></i>' +
+            '</div>' +
+            '<div class="mob-acc-body" id="mob-acc-body-' + sec.key + '" style="display:' + (isOpen ? 'block' : 'none') + ';">' +
+            sec.content +
+            '</div>' +
+            '</div>';
+        }).join('');
+
+        var authHtml = isLoggedIn
+          ? '<a href="/auth/logout" class="mob-more-signout-btn"><i class="bi bi-box-arrow-right"></i> Sign Out</a>'
+          : '<div class="mob-more-signin-card" style="margin-top:14px;">' +
+          '<div class="mob-more-signin-title">Sign in to TripSwarm</div>' +
+          '<div class="mob-more-signin-sub">Access your saved trips and plans.</div>' +
+          '<button class="mob-auth-google-btn" style="margin-bottom:10px;" onclick="switchToTermsModal()">' +
+          '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google"/> Continue with Google' +
+          '</button>' +
+          '<button class="mob-auth-otp-btn" onclick="openAuthModal();authShowStep(\'email\')">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg>' +
+          ' Sign in with OTP' +
+          '</button>' +
+          '</div>';
+
+        inner.innerHTML =
+          profileHtml +
+          '<div style="margin:14px 16px 0;display:flex;flex-direction:column;gap:10px;">' +
+          accordionHtml +
+          '</div>' +
+          '<div class="mob-more-list" style="margin-top:14px;">' +
+          '<a class="mob-more-item" href="/terms">' +
+          '<div class="mob-more-item-icon" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;min-width:38px;border-radius:10px;background:rgba(139,160,188,0.1);color:var(--muted);">' +
+          '<i class="bi bi-shield-lock-fill" style="font-size:1rem;display:block;"></i>' +
+          '</div>' +
+          '<div class="mob-more-item-text">' +
+          '<div class="mob-more-item-label">Terms &amp; Privacy</div>' +
+          '</div>' +
+          '<i class="bi bi-chevron-right mob-more-item-chevron"></i>' +
+          '</a>' +
+          '</div>' +
+          authHtml +
+          '<div style="height:24px;"></div>';
+      }
+
+      _renderMobDestCta();
+
+      /* ── Accordion toggle ── */
+      window._mobAccToggle = function (key, onOpenFn) {
+        var body = document.getElementById('mob-acc-body-' + key);
+        var chev = document.getElementById('mob-acc-chev-' + key);
+        if (!body) return;
+        var isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : 'block';
+        if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
+
+        if (!isOpen) {
+          // Opening
+          if (key === 'pipeline') {
+            // Always restart animation when pipeline is opened
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () { _startMobPipelineAnimation(); });
+            });
+          }
+          if (onOpenFn && window[onOpenFn]) {
+            setTimeout(function () { window[onOpenFn](); }, 50);
+          }
+        } else {
+          // Closing pipeline — stop animation to save CPU
+          if (key === 'pipeline' && _mobPipelineTimer) {
+            clearInterval(_mobPipelineTimer);
+            _mobPipelineTimer = null;
+          }
+        }
+      };
+
+      var _mobPipelineTimer = null;
+      var _mobPipelineIdx = 0;
+      var _MOB_PIPELINE_COUNT = 6;
+
+      function _startMobPipelineAnimation() {
+        if (_mobPipelineTimer) {
+          clearInterval(_mobPipelineTimer);
+          _mobPipelineTimer = null;
+        }
+        _mobPipelineIdx = 0;
+
+        // Reset all nodes immediately
+        for (var r = 0; r < _MOB_PIPELINE_COUNT; r++) {
+          var rn = document.getElementById('mob-pipeline-node-' + r);
+          if (rn) { rn.style.borderColor = ''; rn.style.background = ''; }
+        }
+
+        _mobPipelineTimer = setInterval(function () {
+          // Reset all
+          for (var i = 0; i < _MOB_PIPELINE_COUNT; i++) {
+            var n = document.getElementById('mob-pipeline-node-' + i);
+            if (n) {
+              // Restore gold border for node 5 (Output), clear teal for rest
+              n.style.borderColor = (i === 5) ? 'var(--gold)' : '';
+              n.style.background = '';
+            }
+          }
+          // Highlight current
+          var active = document.getElementById('mob-pipeline-node-' + _mobPipelineIdx);
+          if (active) {
+            active.style.borderColor = 'var(--teal)';
+            active.style.background = 'rgba(0,212,200,0.09)';
+          }
+          _mobPipelineIdx = (_mobPipelineIdx + 1) % _MOB_PIPELINE_COUNT;
+        }, 900);
+      }
+
+      var _mobDestPreviews = {
+        'Tokyo 🇯🇵': { text: '✈️ <strong>Flight</strong>: MAA → NRT · Multiple carriers | <strong>Hotel</strong>: Budget to luxury | 🗓️ <strong>Highlights</strong>: Senso-ji, Shibuya, TeamLab, Akihabara', prompt: 'Plan a 5-day trip to Tokyo from Chennai' },
+        'Bali 🇮🇩': { text: '✈️ <strong>Flight</strong>: MAA → DPS · Direct & connecting | <strong>Hotel</strong>: Villas & resorts | 🗓️ <strong>Highlights</strong>: Ubud Forest, Rice Terraces, Uluwatu, Seminyak', prompt: 'Plan a 7-day trip to Bali from Chennai' },
+        'Paris 🇫🇷': { text: '✈️ <strong>Flight</strong>: MAA → CDG · Several airlines | <strong>Hotel</strong>: Charming stays | 🗓️ <strong>Highlights</strong>: Eiffel Tower, Louvre, Montmartre, Seine cruise', prompt: 'Plan a 7-day Paris trip from Chennai' },
+        'Dubai 🇦🇪': { text: '✈️ <strong>Flight</strong>: MAA → DXB · Frequent connections | <strong>Hotel</strong>: City to resort luxury | 🗓️ <strong>Highlights</strong>: Burj Khalifa, Desert Safari, Palm Jumeirah', prompt: 'Plan a 5-day Dubai trip from Chennai' },
+      };
+
+      window.mobPickDest = function (dest) {
+        document.querySelectorAll('#mob-dest-btns .dest-btn').forEach(function (b) {
+          b.classList.toggle('selected', b.textContent.trim() === dest);
+        });
+        var data = _mobDestPreviews[dest];
+        var preview = document.getElementById('mob-dest-preview');
+        var text = document.getElementById('mob-dest-preview-text');
+        if (!data || !preview || !text) return;
+        text.innerHTML = data.text;
+        preview.style.display = 'block';
+        _renderMobDestCta(dest);
+      };
+
+      function _renderMobDestCta(selectedDest) {
+        var area = document.getElementById('mob-dest-preview-cta');
+        if (!area) return;
+        var isLoggedIn = window.SESSION && window.SESSION.loggedIn;
+        if (!selectedDest) {
+          var activeBtn = document.querySelector('#mob-dest-btns .dest-btn.selected');
+          selectedDest = activeBtn ? activeBtn.textContent.trim() : null;
+        }
+        if (isLoggedIn && selectedDest) {
+          var prompt = (_mobDestPreviews[selectedDest] || {}).prompt || ('Plan a trip to ' + selectedDest);
+          area.innerHTML = '<button class="mob-hero-cta" style="font-size:0.78rem;padding:9px 16px;width:auto;display:inline-flex;" onclick="mobPromptModal(\'' + esc(prompt) + '\')">' +
+            '<i class="bi bi-rocket-takeoff-fill"></i> Try it in TripSwarm' +
+            '</button>';
+        } else if (!isLoggedIn) {
+          area.innerHTML = '<button onclick="openAuthModal()" class="mob-auth-google-btn" style="font-size:0.78rem;padding:9px 16px;">' +
+            '<i class="bi bi-box-arrow-in-right"></i> Sign in to build this trip' +
+            '</button>';
+        } else {
+          area.innerHTML = '';
+        }
+      }
+
+      window.mobToggleMoreSection = function (key) {
+        var sec = document.getElementById('mob-sec-' + key);
+        var chev = document.getElementById('mob-chev-' + key);
+        if (!sec) return;
+        var hidden = sec.classList.contains('hidden');
+        sec.classList.toggle('hidden', !hidden);
+        if (chev) chev.style.transform = hidden ? 'rotate(90deg)' : '';
+      };
+
+      /* ─────────────────────────────────────────────────────────────
+         11. PLAN PANE — chat bottom
+      ───────────────────────────────────────────────────────────── */
+      function renderPlanChatBottom() {
+        var area = document.getElementById('mob-chat-bottom-area');
+        if (!area) return;
+        var isLoggedIn = window.SESSION && window.SESSION.loggedIn;
+        var tab = window._mobActiveChatTab || window._desktopActiveChatTab || 'plan';
+        var placeholder = tab === 'qa' ? 'e.g. What\'s the visa process for India → Japan?' : 'e.g. Plan a 5-day trip to Tokyo…';
+        var modeParam = tab === 'qa' ? 'rag' : 'travel';
+
+        if (isLoggedIn) {
+          area.innerHTML =
+            '<div class="chat-auth-gate">' +
+            '<p>You\'re signed in! Open the full app to plan your trip.</p>' +
+            '<a href="/chat?mode=' + modeParam + '" class="mob-hero-cta" style="font-size:0.82rem;padding:10px 20px;display:inline-flex;width:auto;">' +
+            '<i class="bi bi-rocket-takeoff-fill"></i> Open ' + (tab === 'qa' ? 'Travel Copilot' : 'Trip Planner') +
+            '</a>' +
+            '</div>' +
+            '<div class="chat-input-row">' +
+            '<input type="text" class="chat-input" id="mob-chatInput" placeholder="' + placeholder + '" onkeydown="if(event.key===\'Enter\') window.mobSendChatMsg()" />' +
+            '<button class="chat-send" onclick="window.mobSendChatMsg()"><i class="bi bi-send-fill"></i></button>' +
+            '</div>';
+        } else {
+          area.innerHTML =
+            '<div class="chat-auth-gate">' +
+            '<p><i class="bi bi-lock-fill" style="color:var(--gold);"></i> Sign in to send messages and save your plans.</p>' +
+            '<button onclick="openAuthModal()" class="google-btn" style="font-size:0.82rem;padding:10px 18px;border:none;cursor:pointer;">' +
+            '<i class="bi bi-box-arrow-in-right"></i> Sign in to TripSwarm' +
+            '</button>' +
+            '</div>' +
+            '<div class="chat-input-row">' +
+            '<input type="text" class="chat-input" id="mob-chatInput" placeholder="' + placeholder + '" onkeydown="if(event.key===\'Enter\') window.mobSendChatMsg()" />' +
+            '<button class="chat-send" onclick="window.mobSendChatMsg()"><i class="bi bi-send-fill"></i></button>' +
+            '</div>';
+        }
+      }
+
+      window._mobActiveChatTab = 'plan';
+
+      window.mobSwitchChatTab = function (tab) {
+        window._mobActiveChatTab = tab;
+        var planBtn = document.getElementById('mob-tabPlan');
+        var qaBtn = document.getElementById('mob-tabQA');
+        if (planBtn) planBtn.classList.toggle('active', tab === 'plan');
+        if (qaBtn) qaBtn.classList.toggle('active', tab === 'qa');
+
+        var msgs = document.getElementById('mob-chatMessages');
+        if (msgs) {
+          msgs.innerHTML =
+            '<div class="msg msg-ai"><div class="msg-sender">TripSwarm</div>' +
+            (tab === 'qa'
+              ? '🔍 Ask me anything about travel — visa process, packing tips, culture notes.'
+              : '🗺️ Tell me where you want to go! I\'ll deploy Flight, Hotel &amp; Itinerary agents to plan your trip.') +
+            '</div>';
+        }
+        renderPlanChatBottom();
+      };
+
+      window.mobSendChatMsg = function () {
+        var input = document.getElementById('mob-chatInput');
+        var text = input ? input.value.trim() : '';
+        if (!text) return;
+        if (!(window.SESSION && window.SESSION.loggedIn)) {
+          if (typeof openAuthModal === 'function') openAuthModal();
+          return;
+        }
+        var modeParam = (window._mobActiveChatTab === 'qa') ? 'rag' : 'travel';
+        window.location.href = '/chat?mode=' + modeParam + '&q=' + encodeURIComponent(text);
+      };
+
+      /* 12. TAB SWITCHING — explicit display control, no CSS reliance  */
+
+      var MOB_TAB_FIRST_RENDER = {};
+
+      window.mobSwitchTab = function (tab, btn) {
+        /* Update button states */
+        document.querySelectorAll('.mob-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+
+        /* Stop pipeline animation when leaving More tab */
+        if (tab !== 'more' && _mobPipelineTimer) {
+          clearInterval(_mobPipelineTimer);
+          _mobPipelineTimer = null;
+        }
+
+        if (btn) btn.classList.add('active');
+
+        /* Explicitly show/hide panes via style — bypasses CSS specificity wars */
+        document.querySelectorAll('.mob-pane').forEach(function (p) {
+          p.classList.remove('mob-active');
+          p.style.display = 'none';
+        });
+        var pane = document.getElementById('mob-pane-' + tab);
+        if (pane) {
+          pane.classList.add('mob-active');
+          pane.style.display = 'block';
+        }
+
+        /* Home always re-renders; others render once */
+        if (tab === 'home') {
+          renderHomePane();
+        } else if (!MOB_TAB_FIRST_RENDER[tab]) {
+          MOB_TAB_FIRST_RENDER[tab] = true;
+          if (tab === 'plan') renderPlanChatBottom();
+          if (tab === 'trips') renderTripsPane();
+          if (tab === 'more') renderMorePane();
+        }
+      };
+
+      /* 13. SKELETON */
+
+      function renderHomeSkeleton() {
+        var pane = document.getElementById('mob-pane-home');
+        if (!pane) return;
+        pane.innerHTML =
+          '<div class="mob-hero-card">' +
+          '<div class="mob-hero-img-wrap">' +
+          '<div class="mob-img-loading" style="width:100%;height:190px;background:linear-gradient(135deg,#122040,#1E3A5F);"></div>' +
+          '<div class="mob-hero-img-gradient"></div>' +
+          '</div>' +
+          '<div class="mob-hero-text">' +
+          '<div class="mob-img-loading" style="height:14px;width:120px;border-radius:8px;margin-bottom:10px;"></div>' +
+          '<div class="mob-img-loading" style="height:28px;width:85%;border-radius:8px;margin-bottom:8px;"></div>' +
+          '<div class="mob-img-loading" style="height:16px;width:70%;border-radius:8px;margin-bottom:16px;"></div>' +
+          '<div class="mob-img-loading" style="height:44px;border-radius:12px;"></div>' +
+          '</div>' +
+          '</div>' +
+          '<div class="mob-feature-row">' +
+          [1, 2, 3, 4].map(function () {
+            return '<div class="mob-feat-card" style="pointer-events:none;">' +
+              '<div class="mob-img-loading mob-feat-icon" style="border-radius:9px;"></div>' +
+              '<div class="mob-img-loading" style="height:10px;width:50px;border-radius:6px;margin-top:6px;"></div>' +
+              '</div>';
+          }).join('') +
+          '</div>' +
+          '<div style="padding:0;margin-top:22px;">' +
+          '<div class="mob-img-loading" style="height:12px;width:140px;border-radius:6px;margin:0 16px 10px;"></div>' +
+          '<div class="mob-dest-scroll">' +
+          [1, 2, 3, 4].map(function () {
+            return '<div class="mob-dest-card mob-img-loading" style="flex-shrink:0;pointer-events:none;background:linear-gradient(135deg,#122040,#1E3A5F);"></div>';
+          }).join('') +
+          '</div>' +
+          '</div>';
+      }
+
+      /* 14. CORE MOBILE ACTIVATE — explicit style control */
+
+      function mobActivate() {
+        if (!isMobile()) return;
+
+        showMobileChrome();
+        renderHomeSkeleton();
+
+        if (window._sessionReady) {
+          _doMobRender();
+        } else {
+          var tries = 0;
+          var poll = setInterval(function () {
+            tries++;
+            if (window._sessionReady || tries > 80) {
+              clearInterval(poll);
+              _doMobRender();
+            }
+          }, 100);
+        }
+      }
+
+      function _doMobRender() {
+        renderMobNavRight();
+        renderHomePane();
+        renderPlanChatBottom();
+      }
+
+      /* 15. RESIZE HANDLER — DevTools mobile toggle */
+
+      var _wasMobile = isMobile();
+      var _resizeTimer = null;
+
+      window.addEventListener('resize', function () {
+        /* Debounce so DevTools drag doesn't fire 50 times */
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(function () {
+          var nowMobile = isMobile();
+          if (nowMobile && !_wasMobile) {
+            _wasMobile = true;
+            MOB_TAB_FIRST_RENDER = {};
+            showMobileChrome();
+            renderHomeSkeleton();
+            _doMobRender();
+          } else if (!nowMobile && _wasMobile) {
+            _wasMobile = false;
+            hideMobileChrome();
+          }
+        }, 150);
+      });
+
+      /* 16. INITIAL PAGE LOAD */
+
+      function mobInit() {
+        if (isMobile()) {
+          mobActivate();
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(mobInit, 30); });
+      } else {
+        setTimeout(mobInit, 30);
+      }
+
+      /* PROMPT EDIT MODAL — shows prompt before navigating */
+
+      window.mobPromptModal = function (prompt) {
+        // Remove any existing modal
+        var existing = document.getElementById('mob-prompt-modal');
+        if (existing) existing.remove();
+
+        var modal = document.createElement('div');
+        modal.id = 'mob-prompt-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:flex;align-items:flex-end;padding:0;';
+        modal.innerHTML =
+          '<div style="background:#0d1530;border:1px solid rgba(0,212,200,0.22);border-radius:20px 20px 0 0;width:100%;padding:20px 18px 32px;animation:modal-rise 0.3s cubic-bezier(0.16,1,0.3,1);">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:1rem;color:var(--white);">Plan Your Trip</div>' +
+          '<button onclick="document.getElementById(\'mob-prompt-modal\').remove()" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;">✕</button>' +
+          '</div>' +
+          '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;">Edit your prompt before sending:</div>' +
+          '<textarea id="mob-prompt-input" style="width:100%;background:#122040;border:1px solid rgba(0,212,200,0.25);border-radius:12px;color:var(--white);font-family:\'Inter\',sans-serif;font-size:0.85rem;padding:12px 14px;min-height:80px;resize:none;outline:none;box-sizing:border-box;">' + esc(prompt) + '</textarea>' +
+          '<button onclick="window._mobSendPromptModal()" style="margin-top:12px;width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;background:var(--teal);color:var(--navy);font-size:0.9rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;">' +
+          '<i class="bi bi-send-fill"></i> Send Prompt' +
+          '</button>' +
+          '</div>';
+
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) modal.remove();
+        });
+        document.body.appendChild(modal);
+        setTimeout(function () {
+          var ta = document.getElementById('mob-prompt-input');
+          if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+        }, 350);
+      };
+
+      window._mobSendPromptModal = function () {
+        var ta = document.getElementById('mob-prompt-input');
+        var text = ta ? ta.value.trim() : '';
+        if (!text) return;
+        var modal = document.getElementById('mob-prompt-modal');
+        if (modal) modal.remove();
+        window.location.href = '/chat?mode=travel&q=' + encodeURIComponent(text);
+      };
+
+      /* ── Mobile profile sheet — works on both / and /chat ── */
+      window._mobOpenProfile = function () {
+        // If app.js openProfileModal is available (on /chat), use it
+        if (typeof openProfileModal === 'function') {
+          openProfileModal();
+          return;
+        }
+        // Otherwise render the inline sheet
+        var sheet = document.getElementById('mob-profile-sheet');
+        var body = document.getElementById('mob-profile-sheet-body');
+        if (!sheet || !body) return;
+
+        sheet.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        var u = (window.SESSION && window.SESSION.user) || {};
+        var init = (u.name || u.email || 'U')[0].toUpperCase();
+        var avHtml = u.picture
+          ? '<img src="' + esc(u.picture) + '" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" alt="avatar">'
+          : '<div style="width:56px;height:56px;border-radius:50%;background:var(--teal);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;">' + esc(init) + '</div>';
+
+        body.innerHTML =
+          '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">' +
+          avHtml +
+          '<div>' +
+          '<div style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:1rem;color:var(--white);">' + esc(u.name || '') + '</div>' +
+          '<div style="font-size:0.75rem;color:var(--muted);">' + esc(u.email || '') + '</div>' +
+          '</div>' +
+          '</div>' +
+
+          '<div id="mob-profile-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">' +
+          '<div style="background:rgba(0,212,200,0.08);border:1px solid rgba(0,212,200,0.3);border-radius:12px;padding:14px 12px;text-align:center;">' +
+          '<div style="font-size:0.6rem;color:rgba(139,160,188,0.8);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Upcoming Trips</div>' +
+          '<div id="mob-ps-upcoming" style="font-family:\'Syne\',sans-serif;font-size:1.6rem;font-weight:800;color:#00D4C8;text-shadow:0 0 12px rgba(0,212,200,0.4);line-height:1;">—</div>' +
+          '</div>' +
+          '<div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);border-radius:12px;padding:14px 12px;text-align:center;">' +
+          '<div style="font-size:0.6rem;color:rgba(139,160,188,0.8);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Reports Saved</div>' +
+          '<div id="mob-ps-reports" style="font-family:\'Syne\',sans-serif;font-size:1.6rem;font-weight:800;color:#F5A623;text-shadow:0 0 12px rgba(245,166,35,0.4);line-height:1;">—</div>' +
+          '</div>' +
+          '</div>' +
+
+          '<a href="/chat" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal);color:var(--navy);font-weight:800;font-size:0.88rem;border-radius:12px;padding:13px;text-decoration:none;margin-bottom:10px;">' +
+          '<i class="bi bi-rocket-takeoff-fill"></i> Open TripSwarm' +
+          '</a>' +
+
+          '<a href="/auth/logout" style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;font-weight:700;font-size:0.85rem;border-radius:12px;padding:12px;text-decoration:none;">' +
+          '<i class="bi bi-box-arrow-right"></i> Sign Out' +
+          '</a>';
+
+        // Load stats async
+        fetch('/api/reports/categorised', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d) return;
+            var upEl = document.getElementById('mob-ps-upcoming');
+            var rpEl = document.getElementById('mob-ps-reports');
+            if (upEl) upEl.textContent = (d.upcoming || []).length;
+            if (rpEl) rpEl.textContent = ((d.upcoming || []).length + (d.live || []).length + (d.past || []).length);
+          })
+          .catch(function () { });
+      };
+
+      window._closeMobProfile = function () {
+        var sheet = document.getElementById('mob-profile-sheet');
+        if (sheet) sheet.style.display = 'none';
+        document.body.style.overflow = '';
+      };
+
+      // Close sheet when tapping backdrop
+      document.addEventListener('DOMContentLoaded', function () {
+        var sheet = document.getElementById('mob-profile-sheet');
+        if (sheet) {
+          sheet.addEventListener('click', function (e) {
+            if (e.target === sheet) window._closeMobProfile();
+          });
+        }
+      });
+
+    })();
+  </script>
+
+  <!-- ── Mobile Profile Sheet (homepage, no app.js needed) ── -->
+  <div id="mob-profile-sheet"
+    style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;">
+    <div id="mob-profile-sheet-inner"
+      style="background:#0d1530;border:1px solid rgba(0,212,200,0.22);border-radius:20px 20px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:0 0 env(safe-area-inset-bottom,0px);">
+      <!-- header -->
+      <div
+        style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--white);">My Profile</div>
+        <button onclick="window._closeMobProfile()"
+          style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>
+      </div>
+      <!-- body — injected by JS -->
+      <div id="mob-profile-sheet-body" style="padding:18px;"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/home.js"></script>
+
+
+</body>
+
+</html>
