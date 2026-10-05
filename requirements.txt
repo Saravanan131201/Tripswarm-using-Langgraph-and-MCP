@@ -10,7 +10,7 @@ itsdangerous
 
 
 sqlalchemy
-psycopg2-binary
+psycopg[binary]
 python-dotenv
 
 
