@@ -589,7 +589,7 @@ def _build_combined_raw(all_results: dict[str, list[str]]) -> str:
 # Internal: single Exa category search
 
 async def _search_exa_category(category: str, query: str) -> tuple[str, list[str], list[str]]:
-    result           = await exa_search_tool.ainvoke({"query": query, "numResults": 4})
+    result           = await exa_search_tool.ainvoke({"query": query, "numResults": 5})
     highlights, urls = _extract_highlights_and_urls(result)
     return category, highlights, urls
 
