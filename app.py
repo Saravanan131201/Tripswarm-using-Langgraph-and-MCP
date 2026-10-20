@@ -1050,6 +1050,21 @@ async def get_thread_messages(thread_id: uuid.UUID, request: Request, db: Sessio
         .order_by(ChatMessage.created_at.asc())
         .all()
     )
+
+
+    msg_ids = [m.id for m in messages]
+    report_msg_ids = set()
+    if msg_ids:
+        rows = (
+            db.query(TripReport.assistant_chat_id)
+            .filter(
+                TripReport.user_id == user.id,
+                TripReport.assistant_chat_id.in_(msg_ids),
+            )
+            .all()
+        )
+        report_msg_ids = {r[0] for r in rows}
+
     return JSONResponse([
         {
             "id":             str(m.id),
@@ -1057,6 +1072,7 @@ async def get_thread_messages(thread_id: uuid.UUID, request: Request, db: Sessio
             "content":        m.content,
             "created_at":     fmt_utc(m.created_at),
             "attached_files": m.attached_files or [],
+            "has_report":     m.id in report_msg_ids,
         }
         for m in messages
     ])
