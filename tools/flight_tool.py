@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from llm_providers import groq_llm_extract_and_structure
+from llm_providers import groq_llm_extract
 
 # AFTER — replace with this:
 _TODAY = date.today().isoformat()
@@ -72,7 +72,7 @@ def extract_trip_request(query: str, user_country: str = "India") -> dict:
         user_country=user_country or "India",
     )
     try:
-        response = groq_llm_extract_and_structure.invoke([
+        response = groq_llm_extract.invoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=query),
         ])
