@@ -91,6 +91,12 @@ async def flight_agent(state: TravelState) -> TravelState:
             flight_prefs=state["flight_prefs"],
         )
         formatted = format_flights_for_llm(flight_data)
+
+        if not formatted or not formatted.strip():
+            err_msg = ("✈️ Flight search failed: No usable flight results were found for the selected route and dates.")
+            await _emit_progress(sid, "agent_error", err_msg)
+            return {**state, "flight_results": "", "error": err_msg,}
+        
         await _emit_progress(sid, "flights_found", "Flights found ✓")
         return {**state, "flight_results": formatted}
 
@@ -130,11 +136,15 @@ async def destination_research_agent(state: TravelState) -> TravelState:
             special_requirements=prefs.get("special_requirements") or ["Solo"],
         )
 
-        await _emit_progress(sid, "destination_found", "Destination research complete ✓")
+
 
         if result is None:
-            return {**state, "destination_research": "", "destination_sources": {}}
-
+            err_msg = ("📍 Destination search failed: Try after sometime.")
+            await _emit_progress(sid, "agent_error", err_msg)
+            return {**state, "destination_research": "", "destination_sources": {},"error": err_msg,}
+        
+        await _emit_progress(sid, "destination_found", "Destination research complete ✓")
+        
         return {
             **state,
             "destination_research": result["output"],
@@ -304,6 +314,10 @@ async def final_agent(state: TravelState) -> TravelState:
         )
 
         response = _llm_call(system, prompt)
+
+        if not response or not response.strip():
+            raise RuntimeError("TripSwarm Report Generation Failed, Try after sometime")
+
         await _emit_progress(sid, "report_ready", "Trip report generated ✓")
         return {**state, "response": response}
 
