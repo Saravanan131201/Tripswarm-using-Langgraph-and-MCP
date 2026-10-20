@@ -213,7 +213,7 @@ class TestOTPFlow:
             mock_post.return_value = MagicMock(status_code=200)
             response = client.post(
                 "/api/otp/send",
-                json={"email": "newuser@test.com", "name": "New User"}
+                json={"email": "newuser@gmail.com", "name": "New User"}
             )
         # 200 (sent) or 404 if route not found yet
         assert response.status_code in (200, 201, 404, 422)
