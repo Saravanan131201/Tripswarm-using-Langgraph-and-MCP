@@ -19,8 +19,8 @@ class TestAppCreation:
 
     def test_app_has_routes(self):
         """App must have routes registered (not an empty app)."""
-        from app import app
-        routes = [r.path for r in app.routes]
+        from app import fastapi_app
+        routes = [r.path for r in fastapi_app.routes]
         assert len(routes) > 0, "No routes registered on the FastAPI app"
 
     def test_openapi_schema_loads(self, client):
@@ -211,10 +211,10 @@ class TestOTPFlow:
         """
         with patch("requests.post") as mock_post:
             mock_post.return_value = MagicMock(status_code=200)
-        response = client.post(
-            "/api/otp/send",
-            json={"email": "newuser@test.com", "name": "New User"}
-        )
+            response = client.post(
+                "/api/otp/send",
+                json={"email": "newuser@test.com", "name": "New User"}
+            )
         # 200 (sent) or 404 if route not found yet
         assert response.status_code in (200, 201, 404, 422)
 
