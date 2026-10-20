@@ -209,13 +209,12 @@ class TestOTPFlow:
         POST /auth/request-otp must accept a valid email.
         Mailer is mocked — no real email is sent.
         """
-        with patch("requests.post") as mock_post:
-            mock_post.return_value = MagicMock(status_code=200)
-            response = client.post(
-                "/api/otp/send",
-                json={"email": "newuser@gmail.com", "name": "New User"}
-            )
-        # 200 (sent) or 404 if route not found yet
+        with patch("app._send_otp_email") as mock_mailer:
+                mock_mailer.return_value = None
+                response = client.post(
+                    "/api/otp/send",
+                    json={"email": "newuser@gmail.com", "name": "New User"}
+                )
         assert response.status_code in (200, 201, 404, 422)
 
     def test_verify_otp_rejects_wrong_code(self, client):
