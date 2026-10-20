@@ -16,8 +16,18 @@ groq_llm = ChatGroq(
 )
 
 # ── Groq — GPT-OSS 20B (query parsing, destination research structuring) ──────
-groq_llm_extract_and_structure = ChatGroq(
+# Used for: extracting structured travel parameters from user queries
+groq_llm_extract = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY", ""),
     model="openai/gpt-oss-20b",
     temperature=0,
+    max_tokens=1024,
+)
+
+# Used for: structuring Exa destination research into concise sections
+groq_llm_structure = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY", ""),
+    model="openai/gpt-oss-20b",
+    temperature=0,
+    max_tokens=6000,
 )
