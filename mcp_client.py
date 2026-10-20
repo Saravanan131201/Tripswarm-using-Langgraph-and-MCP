@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from llm_providers import groq_llm_extract_and_structure
+from llm_providers import groq_llm_structure
 
 load_dotenv()
 
@@ -329,6 +329,10 @@ def format_flights_for_llm(flight_data: dict) -> str:
     top3      = flight_data.get("outbound_top3", [])
     ret_best  = flight_data.get("return_best", {})
 
+    if not top3:
+        return ""
+
+
     # ── Outbound / one-way leg 1 ──
     direction = "OUTBOUND FLIGHTS" if trip_type == "round_trip" else "LEG 1 (OUTBOUND) FLIGHTS"
     lines.append(f"=== {direction} ===")
@@ -350,6 +354,10 @@ def format_flights_for_llm(flight_data: dict) -> str:
     # ── One-way: inbound leg ──
     if trip_type == "one_way":
         inbound_top3 = flight_data.get("inbound_top3", [])
+
+        if not inbound_top3:
+            return ""
+
         if inbound_top3:
             lines.append("\n=== LEG 2 (INBOUND) FLIGHTS ===")
             for f in inbound_top3:
@@ -414,7 +422,7 @@ Rules:
 * No preamble, no closing remarks — only the three sections with bullets.
 """.strip()
 
-_MAX_CHARS_PER_RESULT = 1500
+_MAX_CHARS_PER_RESULT = 1200
 
 
 
@@ -589,7 +597,7 @@ def _build_combined_raw(all_results: dict[str, list[str]]) -> str:
 # Internal: single Exa category search
 
 async def _search_exa_category(category: str, query: str) -> tuple[str, list[str], list[str]]:
-    result           = await exa_search_tool.ainvoke({"query": query, "numResults": 5})
+    result           = await exa_search_tool.ainvoke({"query": query, "numResults": 3})
     highlights, urls = _extract_highlights_and_urls(result)
     return category, highlights, urls
 
@@ -624,7 +632,7 @@ async def _structure_with_groq(
         )),
     ]
 
-    response = await groq_llm_extract_and_structure.ainvoke(messages)
+    response = await groq_llm_structure.ainvoke(messages)
     content  = response.content
 
     if isinstance(content, list):
@@ -643,8 +651,8 @@ async def _structure_with_groq(
 
 async def exa_destination_research(
     destination: str,
-    travel_style: str = "Balanced",
-    budget: str = "Mid-range",
+    travel_style: str,
+    budget: str,
     interests: list[str] | None = None,
     hotel_preference: list[str] | None = None,
     diet: list[str] | str | None = None,
@@ -680,7 +688,7 @@ async def exa_destination_research(
     output_text = await _structure_with_groq(destination, all_highlights, prefs)
 
     if output_text is None:
-        return None
+        return ""
 
     return {
         "output":  output_text,
