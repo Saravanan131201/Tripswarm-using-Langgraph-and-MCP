@@ -31,6 +31,26 @@ sys.modules["langchain_groq"] = mock_groq
 # Mock rank_bm25
 sys.modules["rank_bm25"] = MagicMock()
 
+# Mock mcp_client
+mock_mcp_client = MagicMock()
+mock_mcp_client.search_flights_serpapi = AsyncMock(return_value=[])
+mock_mcp_client.format_flights_for_llm = MagicMock(return_value="")
+mock_mcp_client.exa_destination_research = AsyncMock(return_value=[])
+sys.modules["mcp_client"] = mock_mcp_client
+
+# Mock langchain_mcp_adapters — imported by mcp_client
+sys.modules["langchain_mcp_adapters"] = MagicMock()
+sys.modules["langchain_mcp_adapters.client"] = MagicMock()
+
+# Mock llm_providers — imported by mcp_client and backend
+mock_llm_providers = MagicMock()
+mock_llm_providers.groq_llm = MagicMock()
+mock_llm_providers.groq_llm_structure = MagicMock()
+sys.modules["llm_providers"] = mock_llm_providers
+
+# Mock certifi — imported by mcp_client
+sys.modules["certifi"] = MagicMock()
+
 # Mock cloudinary
 sys.modules["cloudinary"] = MagicMock()
 sys.modules["cloudinary.uploader"] = MagicMock()
