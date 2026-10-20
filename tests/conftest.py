@@ -13,7 +13,26 @@ mock_pinecone_instance.Index.return_value = MagicMock()
 mock_pinecone_module = MagicMock()
 mock_pinecone_module.Pinecone.return_value = mock_pinecone_instance
 mock_pinecone_module.ServerlessSpec = MagicMock()
-sys.modules["pinecone"] = mock_pinecone_module
+
+# Register pinecone and every submodule langchain_pinecone tries to reach
+for _mod in [
+    "pinecone",
+    "pinecone.data",
+    "pinecone.data.features",
+    "pinecone.data.features.inference",
+    "pinecone.data.features.inference.inference",
+]:
+    sys.modules[_mod] = mock_pinecone_module
+
+# Mock langchain_pinecone itself so its real __init__ never runs
+mock_lc_pinecone = MagicMock()
+mock_lc_pinecone.PineconeVectorStore = MagicMock()
+for _mod in [
+    "langchain_pinecone",
+    "langchain_pinecone.embeddings",
+    "langchain_pinecone.vectorstores",
+]:
+    sys.modules[_mod] = mock_lc_pinecone
 
 # Mock fastembed / FastEmbedEmbeddings
 mock_fastembed = MagicMock()
