@@ -23,17 +23,12 @@ socket.on('connect', () => {
 socket.on('agent_progress', ({ status, detail }) => {
   _onAgentProgress(status, detail);
   if (status === 'agent_error') {
+    // Only clean up the loading UI here.
+    // The error bubble itself is rendered once, from the /api/travel response.
     const statusEl = document.getElementById('ts-agent-status');
     if (statusEl) statusEl.remove();
-    const summaryWrapper = document.querySelector('#travel-messages .ts-summary-wrapper');
-    if (summaryWrapper) {
-      const footer = summaryWrapper.querySelector('.ts-summary-footer');
-      if (footer) footer.remove();
-    }
-    appendTsError(detail || 'An error occurred. Please try again.');
-    App.sending = false;
-    const sendBtn = document.getElementById('travel-send-btn');
-    if (sendBtn) sendBtn.disabled = false;
+    const footer = document.querySelector('#travel-messages .ts-summary-wrapper .ts-summary-footer');
+    if (footer) footer.remove();
   }
 });
 
@@ -352,7 +347,13 @@ async function _loadThreadMessages(threadId, type, silent = false) {
           return;
         }
 
-        appendMessageWithArtifacts(cid, msg.content, msg.created_at, sourceId, threadId, null, msg.id);
+        // Full report generated → show message WITH artifacts
+        if (msg.has_report) {
+          appendMessageWithArtifacts(cid, msg.content, msg.created_at, sourceId, threadId, null, msg.id);
+        } else {
+          // Failed run → plain error bubble, NO artifacts
+          appendTsError(escapeHtml(msg.content), msg.created_at);
+        }
       });
 
     } else {
@@ -1082,7 +1083,9 @@ async function sendTravel() {
     clearQueryParam();
 
     if (data.error) {
-      appendTsError(data.error);
+      // Make sure the "searching…" footer is gone, then show the error exactly once
+      document.querySelector('#travel-messages .ts-summary-wrapper .ts-summary-footer')?.remove();
+      appendTsError(escapeHtml(data.error));
     } else if (travelRes.ok) {
       // Append the main assistant message with artifacts — summary card renders inside it
       appendMessageWithArtifacts(
